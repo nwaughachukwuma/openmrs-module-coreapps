@@ -36,7 +36,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<distro.groupId>org.openmrs.distro</distro.groupId>
         <distro.artifactId>referenceapplication</distro.artifactId>
-        <distro.version>2.4-SNAPSHOT</distro.version>
+        <distro.version>2.2</distro.version>
         <appframeworkVersion>2.1</appframeworkVersion>
         <uiframeworkVersion>3.3.1</uiframeworkVersion>
         <emrapiVersion>1.6</emrapiVersion>
@@ -74,11 +74,6 @@
 	</dependencyManagement>
 
 	<dependencies>
-        <dependency>
-            <groupId>org.openmrs.module</groupId>
-            <artifactId>emrapi-api-1.11</artifactId>
-            <type>jar</type>
-        </dependency>
     </dependencies>
 
 	<build>
