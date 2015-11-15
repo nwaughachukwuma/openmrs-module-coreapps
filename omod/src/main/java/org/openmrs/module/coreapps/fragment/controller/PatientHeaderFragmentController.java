@@ -17,11 +17,16 @@ package org.openmrs.module.coreapps.fragment.controller;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
+import org.jfree.util.Log;
+import org.openmrs.Concept;
 import org.openmrs.Location;
+import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifierType;
 import org.openmrs.PersonName;
 import org.openmrs.api.APIException;
+import org.openmrs.api.ConceptService;
+import org.openmrs.api.ObsService;
 import org.openmrs.api.context.Context;
 import org.openmrs.layout.web.name.NameSupport;
 import org.openmrs.layout.web.name.NameTemplate;
@@ -36,6 +41,7 @@ import org.openmrs.module.emrapi.patient.PatientDomainWrapper;
 import org.openmrs.module.emrapi.visit.VisitDomainWrapper;
 import org.openmrs.module.idgen.AutoGenerationOption;
 import org.openmrs.module.idgen.service.IdentifierSourceService;
+import org.openmrs.ui.framework.UiUtils;
 import org.openmrs.ui.framework.annotation.FragmentParam;
 import org.openmrs.ui.framework.annotation.InjectBeans;
 import org.openmrs.ui.framework.annotation.SpringBean;
@@ -45,6 +51,7 @@ import org.openmrs.ui.framework.fragment.FragmentModel;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -58,7 +65,10 @@ public class PatientHeaderFragmentController {
 	                       @SpringBean("baseIdentifierSourceService") IdentifierSourceService identifierSourceService,
                            @FragmentParam(required = false, value="appContextModel") AppContextModel appContextModel,
 	                       @FragmentParam("patient") Object patient, @InjectBeans PatientDomainWrapper wrapper,
+	                       @SpringBean("conceptService") ConceptService conceptService,
+	                       @SpringBean("obsService")	  ObsService obsService,
 	                       @SpringBean("adtService") AdtService adtService, UiSessionContext sessionContext,
+                           UiUtils uiUtils,
                            FragmentModel model) {
 
 		if (patient instanceof Patient) {
@@ -68,6 +78,14 @@ public class PatientHeaderFragmentController {
         }
         config.addAttribute("patient", wrapper);
         config.addAttribute("patientNames", getNames(wrapper.getPersonName()));
+        
+		Concept concept = conceptService.getConceptByMapping("5089", "CIEL");
+		if(concept==null || wrapper.getPatient()==null)
+			Log.warn("The CONCEPT value or PATIENT Object is NULL");
+			
+        config.addAttribute("patientWeight", getWeight(obsService,wrapper.getPatient(),concept));
+        config.addAttribute("weightText", "Latest weight");
+
 
 		VisitDomainWrapper activeVisit = (VisitDomainWrapper) config.getAttribute("activeVisit");
 		if (activeVisit == null) {
@@ -107,6 +125,17 @@ public class PatientHeaderFragmentController {
         config.addAttribute("defaultDashboard", coreAppsProperties.getDefaultDashboard());
     }
 
+	private String getWeight(ObsService obsService, Patient patient, Concept concept) {
+		
+		Double weightField=0.0;			
+		Obs obs = null;
+		List<Obs> obsList = obsService.getObservationsByPersonAndConcept(patient,concept);
+		if(!obsList.isEmpty())
+			obs = obsList.get(0);
+		else return "";
+		weightField=obs.getValueNumeric();
+		return String.valueOf(weightField);//weightField;
+	}
     private Map<String,String> getNames(PersonName personName) {
 
         Map<String, String> nameFields = new LinkedHashMap<String, String>();

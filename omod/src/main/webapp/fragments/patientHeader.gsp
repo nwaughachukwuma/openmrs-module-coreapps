@@ -135,6 +135,14 @@
                     <i class="toggle-icon icon-caret-up small"></i>
                 </a>
             </span>
+            <% if(config.patientWeight!="") { %>
+            <div><small>
+	            <span>
+	            	<span>${config.patientWeight}</span><span>${ui.message("coreapps.units.kilograms")}&nbsp;</span>
+	            	<em>${config.weightText}</em>
+	            </span>
+            </small></div>
+            <% } %>
             <div class="hidden" id="contactInfoContent" class="contact-info-content">
                 ${ ui.includeFragment("coreapps", "patientdashboard/contactInfoInline", [ patient: config.patient, contextModel: appContextModel ]) }
             </div>
