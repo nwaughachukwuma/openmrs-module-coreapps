@@ -135,6 +135,7 @@
                     <i class="toggle-icon icon-caret-up small"></i>
                 </a>
             </span>
+            ${ ui.includeFragment("coreapps", "quickObs", [ patient: config.patient ]) }
             <div class="hidden" id="contactInfoContent" class="contact-info-content">
                 ${ ui.includeFragment("coreapps", "patientdashboard/contactInfoInline", [ patient: config.patient, contextModel: appContextModel ]) }
             </div>
