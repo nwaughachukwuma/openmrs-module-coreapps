@@ -1,0 +1,10 @@
+[
+    {
+        "id": "${project.parent.groupId}.${project.parent.artifactId}.patientDashboard.includeHeader",
+        "extensionPointId": "patientDashboard.includeHeader",
+        "extensionParams": {
+            "provider": "coreapps",
+            "fragment": "latestWeight"
+        }
+    }
+]

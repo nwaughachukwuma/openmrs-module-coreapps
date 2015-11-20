@@ -20,30 +20,29 @@ import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.ObsService;
+import org.openmrs.module.appframework.context.AppContextModel;
 import org.openmrs.module.emrapi.patient.PatientDomainWrapper;
+import org.openmrs.ui.framework.annotation.FragmentParam;
 import org.openmrs.ui.framework.annotation.InjectBeans;
 import org.openmrs.ui.framework.annotation.SpringBean;
 import org.openmrs.ui.framework.fragment.FragmentConfiguration;
+import org.springframework.web.bind.annotation.RequestParam;
 /**
  * Ideally you pass in a PatientDomainWrapper as the "patient" config parameter. But if you pass in
  * a Patient, then this controller will wrap that for you.
  */
-public class QuickObsFragmentController {
+public class LatestWeightFragmentController {
 	
 	public void controller(FragmentConfiguration config, 
 	                       @InjectBeans PatientDomainWrapper wrapper,
 	                       @SpringBean("conceptService") ConceptService conceptService,
-	                       @SpringBean("obsService")	  ObsService obsService
+	                       @SpringBean("obsService")	  ObsService obsService,
+	                       @RequestParam("patientId") Patient patient
 	                       ) {
 		
-        config.require("patient");
-        Object patient = config.get("patient");
-
 		if (patient instanceof Patient) {
 			wrapper.setPatient((Patient) patient);
-		} else {
-            wrapper = (PatientDomainWrapper) patient;
-        }
+		} 
 		Concept conceptWeight = conceptService.getConceptByMapping("5089", "CIEL");
 		/*
 		Concept conceptHeight = conceptService.getConceptByMapping("xxxx", "CIEL");
