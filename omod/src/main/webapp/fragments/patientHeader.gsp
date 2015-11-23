@@ -135,7 +135,7 @@
                     <i class="toggle-icon icon-caret-up small"></i>
                 </a>
             </span>
-            
+
             <% if(includeFragments.isEmpty() == false) { %>
                 <% includeFragments.each { %>
                     ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
