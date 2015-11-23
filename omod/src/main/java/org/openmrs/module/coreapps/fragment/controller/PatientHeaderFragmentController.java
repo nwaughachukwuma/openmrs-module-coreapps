@@ -98,6 +98,8 @@ public class PatientHeaderFragmentController {
         
         List<Extension> includeFragments = appFrameworkService.getExtensionsForCurrentUser("patientDashboard.includeHeader");
         Collections.sort(includeFragments);
+        if(includeFragments == null)
+        	  includeFragments = new ArrayList<Extension>();
         model.addAttribute("includeFragments", includeFragments);
 
         
