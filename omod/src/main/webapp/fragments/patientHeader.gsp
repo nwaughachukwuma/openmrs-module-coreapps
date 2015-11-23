@@ -136,11 +136,11 @@
                 </a>
             </span>
             
-            <% if(includeFragments.size()>0){
-    		includeFragments.each{ %>
-        	${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
-			<%   }
-			} %>
+            <% if(includeFragments.isEmpty == false) { %>
+                <% includeFragments.each { %>
+                    ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
+                <% } %>
+			<% } %>
             
             <div class="hidden" id="contactInfoContent" class="contact-info-content">
                 ${ ui.includeFragment("coreapps", "patientdashboard/contactInfoInline", [ patient: config.patient, contextModel: appContextModel ]) }
