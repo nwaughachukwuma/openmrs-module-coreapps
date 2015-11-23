@@ -136,7 +136,7 @@
                 </a>
             </span>
             
-            <% if(includeFragments){
+            <% if(includeFragments.size()>0){
     		includeFragments.each{ %>
         	${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
 			<%   }
