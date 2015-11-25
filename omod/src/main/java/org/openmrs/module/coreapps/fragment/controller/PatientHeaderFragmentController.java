@@ -14,6 +14,12 @@
 
 package org.openmrs.module.coreapps.fragment.controller;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
@@ -22,16 +28,20 @@ import org.openmrs.Patient;
 import org.openmrs.PatientIdentifierType;
 import org.openmrs.PersonName;
 import org.openmrs.api.APIException;
+import org.openmrs.api.ObsService;
+import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
 import org.openmrs.layout.web.name.NameSupport;
 import org.openmrs.layout.web.name.NameTemplate;
-import org.openmrs.module.appframework.domain.Extension;
 import org.openmrs.module.appframework.context.AppContextModel;
+import org.openmrs.module.appframework.domain.AppDescriptor;
+import org.openmrs.module.appframework.domain.Extension;
 import org.openmrs.module.appframework.service.AppFrameworkService;
 import org.openmrs.module.appui.UiSessionContext;
 import org.openmrs.module.coreapps.CoreAppsProperties;
 import org.openmrs.module.coreapps.contextmodel.PatientContextModel;
 import org.openmrs.module.coreapps.contextmodel.VisitContextModel;
+import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper;
 import org.openmrs.module.emrapi.EmrApiProperties;
 import org.openmrs.module.emrapi.adt.AdtService;
 import org.openmrs.module.emrapi.patient.PatientDomainWrapper;
@@ -44,12 +54,6 @@ import org.openmrs.ui.framework.annotation.SpringBean;
 import org.openmrs.ui.framework.fragment.FragmentConfiguration;
 import org.openmrs.ui.framework.fragment.FragmentModel;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * Ideally you pass in a PatientDomainWrapper as the "patient" config parameter. But if you pass in
  * a Patient, then this controller will wrap that for you.
@@ -61,6 +65,7 @@ public class PatientHeaderFragmentController {
 	                       @SpringBean("baseIdentifierSourceService") IdentifierSourceService identifierSourceService,
                            @FragmentParam(required = false, value="appContextModel") AppContextModel appContextModel,
 	                       @FragmentParam("patient") Object patient, @InjectBeans PatientDomainWrapper wrapper,
+	                       @SpringBean("obsService") ObsService obsService, @SpringBean("personService") PersonService personService,
 	                       @SpringBean("appFrameworkService") AppFrameworkService appFrameworkService,
 	                       @SpringBean("adtService") AdtService adtService, UiSessionContext sessionContext,
                            FragmentModel model) {
@@ -113,10 +118,37 @@ public class PatientHeaderFragmentController {
                     options.size() > 0 ? options.get(0).isManualEntryEnabled() : true));
 		}
 
+		
+		// Adapting the header's content based on actual/current registration app's sections.
+		List<AppDescriptor> regAppDescriptors = getRegistrationAppConfig(appFrameworkService);
+		if(regAppDescriptors.isEmpty() == false) {
+			RegistrationDataHelper regData = new RegistrationDataHelper(wrapper.getPatient(), obsService, personService);
+			Map<String, RegistrationDataHelper.RegistrationSectionData> sections = regData.getSectionsFromConfig( regAppDescriptors.get(0).getConfig() );
+		}
+		else {
+			throw new APIException("No Registration App instance enabled.");
+			// TODO Check what REALLY happens by default when there are no reg apps around.
+		}
+		
+		
 		config.addAttribute("extraPatientIdentifierTypes", extraPatientIdentifierTypes);
         config.addAttribute("extraPatientIdentifiersMappedByType", wrapper.getExtraIdentifiersMappedByType(sessionContext.getSessionLocation()));
         config.addAttribute("defaultDashboard", coreAppsProperties.getDefaultDashboard());
     }
+
+	/**
+	 * @param appFrameworkService
+	 * @return The currently enabled Registration Apps AppDescriptors.
+	 */
+	protected List<AppDescriptor> getRegistrationAppConfig(final AppFrameworkService appFrameworkService) {
+		final List<AppDescriptor> regAppDescriptors = new ArrayList<AppDescriptor>();
+		for(AppDescriptor appDesc : appFrameworkService.getAllEnabledApps()) {
+			if(appDesc.getInstanceOf().equals("registrationapp.registerPatient")) {
+				regAppDescriptors.add(appDesc);
+			}
+		}
+		return regAppDescriptors;
+	}
 
     private Map<String,String> getNames(PersonName personName) {
 
