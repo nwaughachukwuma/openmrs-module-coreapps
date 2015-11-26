@@ -99,9 +99,9 @@ public class PatientHeaderFragmentController {
         }
 
         
-        List<Extension> includeFragments = appFrameworkService.getExtensionsForCurrentUser("patientDashboard.includeHeader");
-        Collections.sort(includeFragments);
-        model.addAttribute("includeFragments", includeFragments);
+        List<Extension> firstLineFragments = appFrameworkService.getExtensionsForCurrentUser("coreapps.patientHeader.firstLineFragments");
+        Collections.sort(firstLineFragments);
+        model.addAttribute("firstLineFragments", firstLineFragments);
 
         
 		List<ExtraPatientIdentifierType> extraPatientIdentifierTypes = new ArrayList<ExtraPatientIdentifierType>();
