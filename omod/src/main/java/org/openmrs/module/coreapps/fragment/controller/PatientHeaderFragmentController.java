@@ -14,23 +14,26 @@
 
 package org.openmrs.module.coreapps.fragment.controller;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
-import org.jfree.util.Log;
-import org.openmrs.Concept;
 import org.openmrs.Location;
-import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifierType;
 import org.openmrs.PersonName;
 import org.openmrs.api.APIException;
-import org.openmrs.api.ConceptService;
-import org.openmrs.api.ObsService;
 import org.openmrs.api.context.Context;
 import org.openmrs.layout.web.name.NameSupport;
 import org.openmrs.layout.web.name.NameTemplate;
 import org.openmrs.module.appframework.context.AppContextModel;
+import org.openmrs.module.appframework.domain.Extension;
+import org.openmrs.module.appframework.service.AppFrameworkService;
 import org.openmrs.module.appui.UiSessionContext;
 import org.openmrs.module.coreapps.CoreAppsProperties;
 import org.openmrs.module.coreapps.contextmodel.PatientContextModel;
@@ -48,12 +51,6 @@ import org.openmrs.ui.framework.annotation.SpringBean;
 import org.openmrs.ui.framework.fragment.FragmentConfiguration;
 import org.openmrs.ui.framework.fragment.FragmentModel;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 /**
  * Ideally you pass in a PatientDomainWrapper as the "patient" config parameter. But if you pass in
  * a Patient, then this controller will wrap that for you.
@@ -65,8 +62,7 @@ public class PatientHeaderFragmentController {
 	                       @SpringBean("baseIdentifierSourceService") IdentifierSourceService identifierSourceService,
                            @FragmentParam(required = false, value="appContextModel") AppContextModel appContextModel,
 	                       @FragmentParam("patient") Object patient, @InjectBeans PatientDomainWrapper wrapper,
-	                       @SpringBean("conceptService") ConceptService conceptService,
-	                       @SpringBean("obsService")	  ObsService obsService,
+	                       @SpringBean("appFrameworkService") AppFrameworkService appFrameworkService,
 	                       @SpringBean("adtService") AdtService adtService, UiSessionContext sessionContext,
                            UiUtils uiUtils,
                            FragmentModel model) {
@@ -79,14 +75,6 @@ public class PatientHeaderFragmentController {
         config.addAttribute("patient", wrapper);
         config.addAttribute("patientNames", getNames(wrapper.getPersonName()));
         
-		Concept concept = conceptService.getConceptByMapping("5089", "CIEL");
-		if(concept==null || wrapper.getPatient()==null)
-			Log.warn("The CONCEPT value or PATIENT Object is NULL");
-			
-        config.addAttribute("patientWeight", getWeight(obsService,wrapper.getPatient(),concept));
-        config.addAttribute("weightText", "Latest weight");
-
-
 		VisitDomainWrapper activeVisit = (VisitDomainWrapper) config.getAttribute("activeVisit");
 		if (activeVisit == null) {
             try {
@@ -109,7 +97,13 @@ public class PatientHeaderFragmentController {
             config.addAttribute("activeVisitStartDatetime",
                     DateFormatUtils.format(activeVisit.getStartDatetime(), "dd MMM yyyy hh:mm a", Context.getLocale()));
         }
-		
+
+        
+        List<Extension> includeFragments = appFrameworkService.getExtensionsForCurrentUser("patientDashboard.includeHeader");
+        Collections.sort(includeFragments);
+        model.addAttribute("includeFragments", includeFragments);
+
+        
 		List<ExtraPatientIdentifierType> extraPatientIdentifierTypes = new ArrayList<ExtraPatientIdentifierType>();
 
 		for (PatientIdentifierType type : emrApiProperties.getExtraPatientIdentifierTypes()) {
@@ -125,17 +119,6 @@ public class PatientHeaderFragmentController {
         config.addAttribute("defaultDashboard", coreAppsProperties.getDefaultDashboard());
     }
 
-	private String getWeight(ObsService obsService, Patient patient, Concept concept) {
-		
-		Double weightField=0.0;			
-		Obs obs = null;
-		List<Obs> obsList = obsService.getObservationsByPersonAndConcept(patient,concept);
-		if(!obsList.isEmpty())
-			obs = obsList.get(0);
-		else return "";
-		weightField=obs.getValueNumeric();
-		return String.valueOf(weightField);//weightField;
-	}
     private Map<String,String> getNames(PersonName personName) {
 
         Map<String, String> nameFields = new LinkedHashMap<String, String>();
