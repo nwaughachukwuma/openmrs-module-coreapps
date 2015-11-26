@@ -104,6 +104,11 @@ public class PatientHeaderFragmentController {
         model.addAttribute("firstLineFragments", firstLineFragments);
 
         
+        List<Extension> secondLineFragments = appFrameworkService.getExtensionsForCurrentUser("coreapps.patientHeader.secondLineFragments");
+        Collections.sort(secondLineFragments);
+        model.addAttribute("secondLineFragments", secondLineFragments);
+
+        
 		List<ExtraPatientIdentifierType> extraPatientIdentifierTypes = new ArrayList<ExtraPatientIdentifierType>();
 
 		for (PatientIdentifierType type : emrApiProperties.getExtraPatientIdentifierTypes()) {
