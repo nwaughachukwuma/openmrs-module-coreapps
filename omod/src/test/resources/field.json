@@ -1,0 +1,11 @@
+{
+    "type": "personAddress",
+    "label": "registrationapp.patient.address.question",
+    "widget": {
+        "providerName": "registrationapp",
+        "fragmentId": "field/personAddressWithHierarchy",
+        "config": {
+          "manualFields": ["address1"]
+        }
+    }
+}

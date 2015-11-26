@@ -123,7 +123,12 @@ public class PatientHeaderFragmentController {
 		List<AppDescriptor> regAppDescriptors = getRegistrationAppConfig(appFrameworkService);
 		if(regAppDescriptors.isEmpty() == false) {
 			RegistrationDataHelper regData = new RegistrationDataHelper(wrapper.getPatient(), obsService, personService);
-			Map<String, RegistrationDataHelper.RegistrationSectionData> sections = regData.getSectionsFromConfig( regAppDescriptors.get(0).getConfig() );
+			try {
+				List<RegistrationDataHelper.RegistrationSectionData> sections = regData.getSectionsFromConfig( regAppDescriptors.get(0).getConfig() );
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		else {
 			throw new APIException("No Registration App instance enabled.");

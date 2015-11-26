@@ -113,7 +113,7 @@
       {
          "id":"ethnicity",
          "label":"Ethnicity",
-         "questions":[
+         "questions": [
             {
                "legend":"${project.parent.artifactId}.app.registerPatient.section.ethnicity",
                "fields":[
