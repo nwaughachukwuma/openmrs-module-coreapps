@@ -40,6 +40,8 @@ public class ActiveVisitStatusFragmentController {
 			@InjectBeans PatientDomainWrapper wrapper, @SpringBean("adtService") AdtService adtService,
 			UiSessionContext sessionContext, UiUtils uiUtils, FragmentModel model) {
 
+		model.addAttribute("activeVisitStartDatetime", null);
+		
 		VisitDomainWrapper activeVisit = (VisitDomainWrapper) config.getAttribute("activeVisit");
 		if (activeVisit == null) {
 			try {
