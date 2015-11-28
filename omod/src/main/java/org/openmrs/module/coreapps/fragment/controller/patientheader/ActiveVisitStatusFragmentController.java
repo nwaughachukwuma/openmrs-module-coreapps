@@ -12,7 +12,7 @@
  * Copyright (C) OpenMRS, LLC.  All Rights Reserved.
  */
 
-package org.openmrs.module.coreapps.fragment.controller;
+package org.openmrs.module.coreapps.fragment.controller.patientheader;
 
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.openmrs.Location;
