@@ -99,12 +99,12 @@ public class PatientHeaderFragmentController {
         }
 
         
-        List<Extension> firstLineFragments = appFrameworkService.getExtensionsForCurrentUser("coreapps.patientHeader.firstLineFragments");
+        List<Extension> firstLineFragments = appFrameworkService.getExtensionsForCurrentUser("patientHeader.firstLineFragments");
         Collections.sort(firstLineFragments);
         model.addAttribute("firstLineFragments", firstLineFragments);
 
         
-        List<Extension> secondLineFragments = appFrameworkService.getExtensionsForCurrentUser("coreapps.patientHeader.secondLineFragments");
+        List<Extension> secondLineFragments = appFrameworkService.getExtensionsForCurrentUser("patientHeader.secondLineFragments");
         Collections.sort(secondLineFragments);
         model.addAttribute("secondLineFragments", secondLineFragments);
 
