@@ -52,7 +52,7 @@ public class RegistrationDataHelperTest {
 	@Before
 	public void before() {
 		
-		dataHelper = new RegistrationDataHelper(patient, obsService, personService);
+		dataHelper = new RegistrationDataHelper();
 		log = spy(LogFactory.getLog(RegistrationDataHelper.class));
 		dataHelper.setLog(log);
 	}

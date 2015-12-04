@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.openmrs.Location;
@@ -28,6 +29,7 @@ import org.openmrs.Patient;
 import org.openmrs.PatientIdentifierType;
 import org.openmrs.PersonName;
 import org.openmrs.api.APIException;
+import org.openmrs.api.ConceptService;
 import org.openmrs.api.ObsService;
 import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
@@ -42,6 +44,8 @@ import org.openmrs.module.coreapps.CoreAppsProperties;
 import org.openmrs.module.coreapps.contextmodel.PatientContextModel;
 import org.openmrs.module.coreapps.contextmodel.VisitContextModel;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper;
+import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.DataSourcesWrapper;
+import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationSectionData;
 import org.openmrs.module.emrapi.EmrApiProperties;
 import org.openmrs.module.emrapi.adt.AdtService;
 import org.openmrs.module.emrapi.patient.PatientDomainWrapper;
@@ -65,7 +69,7 @@ public class PatientHeaderFragmentController {
 	                       @SpringBean("baseIdentifierSourceService") IdentifierSourceService identifierSourceService,
                            @FragmentParam(required = false, value="appContextModel") AppContextModel appContextModel,
 	                       @FragmentParam("patient") Object patient, @InjectBeans PatientDomainWrapper wrapper,
-	                       @SpringBean("obsService") ObsService obsService, @SpringBean("personService") PersonService personService,
+	                       @SpringBean("conceptService") ConceptService conceptService, @SpringBean("obsService") ObsService obsService, @SpringBean("personService") PersonService personService,
 	                       @SpringBean("appFrameworkService") AppFrameworkService appFrameworkService,
 	                       @SpringBean("adtService") AdtService adtService, UiSessionContext sessionContext,
                            FragmentModel model) {
@@ -121,19 +125,7 @@ public class PatientHeaderFragmentController {
 		
 		// Adapting the header's content based on actual/current registration app's sections.
 		List<AppDescriptor> regAppDescriptors = getRegistrationAppConfig(appFrameworkService);
-		if(regAppDescriptors.isEmpty() == false) {
-			RegistrationDataHelper regData = new RegistrationDataHelper(wrapper.getPatient(), obsService, personService);
-			try {
-				List<RegistrationDataHelper.RegistrationSectionData> sections = regData.getSectionsFromConfig( regAppDescriptors.get(0).getConfig() );
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		else {
-			throw new APIException("No Registration App instance enabled.");
-			// TODO Check what REALLY happens by default when there are no reg apps around.
-		}
+		List<RegistrationSectionData> sections = getRegistrationData(regAppDescriptors, new DataSourcesWrapper(wrapper, conceptService, obsService));
 		
 		
 		config.addAttribute("extraPatientIdentifierTypes", extraPatientIdentifierTypes);
@@ -153,6 +145,36 @@ public class PatientHeaderFragmentController {
 			}
 		}
 		return regAppDescriptors;
+	}
+	
+	protected List<RegistrationSectionData> getRegistrationData(List<AppDescriptor> regAppDescriptors, final DataSourcesWrapper dataSources) {
+		
+		if(CollectionUtils.isEmpty(regAppDescriptors)) {
+			throw new APIException("No Registration App instance enabled.");
+			// TODO Check what REALLY happens by default when there are no reg apps around.
+		}
+		if(regAppDescriptors.size() > 1) {
+			// TODO Check whether this is possible
+			throw new APIException("Multiple Registration App instances enabled at the same time.");
+		}
+
+		List<RegistrationSectionData> sections = new ArrayList<RegistrationSectionData>();
+		
+		// Filling the registration data structure first
+		RegistrationDataHelper regData = new RegistrationDataHelper();
+		try {
+			sections = regData.getSectionsFromConfig( regAppDescriptors.get(0).getConfig() );
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		// Secondly, fetching the registration data
+		for(RegistrationSectionData section : sections) {
+			section.fetchData(dataSources);
+		}
+		
+		return sections;
 	}
 
     private Map<String,String> getNames(PersonName personName) {
