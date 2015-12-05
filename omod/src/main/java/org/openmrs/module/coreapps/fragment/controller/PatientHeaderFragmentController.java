@@ -24,6 +24,8 @@ import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
+import org.jfree.util.Log;
+import org.openmrs.Concept;
 import org.openmrs.Location;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifierType;
@@ -44,7 +46,7 @@ import org.openmrs.module.coreapps.CoreAppsProperties;
 import org.openmrs.module.coreapps.contextmodel.PatientContextModel;
 import org.openmrs.module.coreapps.contextmodel.VisitContextModel;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper;
-import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.DataSourcesWrapper;
+import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.DataContextWrapper;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationSectionData;
 import org.openmrs.module.emrapi.EmrApiProperties;
 import org.openmrs.module.emrapi.adt.AdtService;
@@ -52,6 +54,7 @@ import org.openmrs.module.emrapi.patient.PatientDomainWrapper;
 import org.openmrs.module.emrapi.visit.VisitDomainWrapper;
 import org.openmrs.module.idgen.AutoGenerationOption;
 import org.openmrs.module.idgen.service.IdentifierSourceService;
+import org.openmrs.ui.framework.UiUtils;
 import org.openmrs.ui.framework.annotation.FragmentParam;
 import org.openmrs.ui.framework.annotation.InjectBeans;
 import org.openmrs.ui.framework.annotation.SpringBean;
@@ -72,6 +75,7 @@ public class PatientHeaderFragmentController {
 	                       @SpringBean("conceptService") ConceptService conceptService, @SpringBean("obsService") ObsService obsService, @SpringBean("personService") PersonService personService,
 	                       @SpringBean("appFrameworkService") AppFrameworkService appFrameworkService,
 	                       @SpringBean("adtService") AdtService adtService, UiSessionContext sessionContext,
+                           UiUtils uiUtils,
                            FragmentModel model) {
 
 		if (patient instanceof Patient) {
@@ -81,7 +85,11 @@ public class PatientHeaderFragmentController {
         }
         config.addAttribute("patient", wrapper);
         config.addAttribute("patientNames", getNames(wrapper.getPersonName()));
-
+        
+		Concept concept = conceptService.getConceptByMapping("5089", "CIEL");
+		if(concept==null || wrapper.getPatient()==null)
+			Log.warn("The CONCEPT value or PATIENT Object is NULL");
+			
 		VisitDomainWrapper activeVisit = (VisitDomainWrapper) config.getAttribute("activeVisit");
 		if (activeVisit == null) {
             try {
@@ -105,12 +113,9 @@ public class PatientHeaderFragmentController {
                     DateFormatUtils.format(activeVisit.getStartDatetime(), "dd MMM yyyy hh:mm a", Context.getLocale()));
         }
         
-        List<Extension> includeFragments = appFrameworkService.getExtensionsForCurrentUser("patientDashboard.includeHeader");
-        Collections.sort(includeFragments);
-        if(includeFragments == null)
-        	  includeFragments = new ArrayList<Extension>();
-        model.addAttribute("includeFragments", includeFragments);
-
+        List<Extension> firstLineFragments = appFrameworkService.getExtensionsForCurrentUser("patientHeader.firstLineFragments");
+        Collections.sort(firstLineFragments);
+        model.addAttribute("firstLineFragments", firstLineFragments);
         
 		List<ExtraPatientIdentifierType> extraPatientIdentifierTypes = new ArrayList<ExtraPatientIdentifierType>();
 
@@ -121,12 +126,10 @@ public class PatientHeaderFragmentController {
 			extraPatientIdentifierTypes.add(new ExtraPatientIdentifierType(type,
                     options.size() > 0 ? options.get(0).isManualEntryEnabled() : true));
 		}
-
 		
 		// Adapting the header's content based on actual/current registration app's sections.
 		List<AppDescriptor> regAppDescriptors = getRegistrationAppConfig(appFrameworkService);
-		List<RegistrationSectionData> sections = getRegistrationData(regAppDescriptors, new DataSourcesWrapper(wrapper, conceptService, obsService));
-		
+		List<RegistrationSectionData> sections = getRegistrationData(regAppDescriptors, new DataContextWrapper(sessionContext.getLocale(), uiUtils, wrapper, conceptService, obsService));
 		
 		config.addAttribute("extraPatientIdentifierTypes", extraPatientIdentifierTypes);
         config.addAttribute("extraPatientIdentifiersMappedByType", wrapper.getExtraIdentifiersMappedByType(sessionContext.getSessionLocation()));
@@ -140,30 +143,31 @@ public class PatientHeaderFragmentController {
 	protected List<AppDescriptor> getRegistrationAppConfig(final AppFrameworkService appFrameworkService) {
 		final List<AppDescriptor> regAppDescriptors = new ArrayList<AppDescriptor>();
 		for(AppDescriptor appDesc : appFrameworkService.getAllEnabledApps()) {
-			if(appDesc.getInstanceOf().equals("registrationapp.registerPatient")) {
+			if (StringUtils.equals(appDesc.getInstanceOf(), "registrationapp.registerPatient")) {
 				regAppDescriptors.add(appDesc);
 			}
 		}
 		return regAppDescriptors;
 	}
 	
-	protected List<RegistrationSectionData> getRegistrationData(List<AppDescriptor> regAppDescriptors, final DataSourcesWrapper dataSources) {
+	protected List<RegistrationSectionData> getRegistrationData(List<AppDescriptor> regAppDescriptors, final DataContextWrapper dataContext) {
 		
-		if(CollectionUtils.isEmpty(regAppDescriptors)) {
+		if (CollectionUtils.isEmpty(regAppDescriptors)) {
 			throw new APIException("No Registration App instance enabled.");
 			// TODO Check what REALLY happens by default when there are no reg apps around.
 		}
-		if(regAppDescriptors.size() > 1) {
+		if (regAppDescriptors.size() > 1) {
 			// TODO Check whether this is possible
 			throw new APIException("Multiple Registration App instances enabled at the same time.");
 		}
-
+		final AppDescriptor regAppDesc = regAppDescriptors.get(0);
+		
 		List<RegistrationSectionData> sections = new ArrayList<RegistrationSectionData>();
 		
 		// Filling the registration data structure first
-		RegistrationDataHelper regData = new RegistrationDataHelper();
+		RegistrationDataHelper dataHelper = new RegistrationDataHelper();
 		try {
-			sections = regData.getSectionsFromConfig( regAppDescriptors.get(0).getConfig() );
+			sections = dataHelper.getSectionsFromConfig(regAppDesc.getConfig());
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -171,7 +175,7 @@ public class PatientHeaderFragmentController {
 		
 		// Secondly, fetching the registration data
 		for(RegistrationSectionData section : sections) {
-			section.fetchData(dataSources);
+			section.fetchData(dataContext);
 		}
 		
 		return sections;
