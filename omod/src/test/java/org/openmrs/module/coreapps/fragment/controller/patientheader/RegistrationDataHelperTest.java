@@ -1,10 +1,14 @@
 package org.openmrs.module.coreapps.fragment.controller.patientheader;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,21 +23,23 @@ import org.codehaus.jackson.node.ObjectNode;
 import org.codehaus.jackson.type.TypeReference;
 import org.junit.Before;
 import org.junit.Test;
+import org.openmrs.Concept;
 import org.openmrs.Patient;
-import org.openmrs.api.ObsService;
-import org.openmrs.api.PersonService;
+import org.openmrs.api.ConceptService;
+import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.DataContextWrapper;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationFieldData;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationQuestionData;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationSectionData;
+import org.openmrs.module.emrapi.patient.PatientDomainWrapper;
 
 public class RegistrationDataHelperTest {
 
-	private Patient patient;
-	private ObsService obsService;
-	private PersonService personService;
-	
 	private RegistrationDataHelper dataHelper;
 	private Log log;
+	
+	private DataContextWrapper dataContext;
+	private ConceptService conceptService;
+	private PatientDomainWrapper patientWrapper;
 	
 	// Test helper: Resource as ObjectNode
 	private ObjectNode getConfigFromResource(String resPath) throws IOException {
@@ -53,10 +59,27 @@ public class RegistrationDataHelperTest {
 	public void before() {
 		
 		dataHelper = new RegistrationDataHelper();
+		conceptService = mock(ConceptService.class);
+		patientWrapper = mock(PatientDomainWrapper.class);
+		when(patientWrapper.getPatient()).thenReturn(mock(Patient.class));
+		dataContext = new DataContextWrapper(null, patientWrapper, conceptService, null);
 		log = spy(LogFactory.getLog(RegistrationDataHelper.class));
 		dataHelper.setLog(log);
 	}
 
+	@Test
+	public void should_returnConceptFromFormFieldName() throws IOException {
+
+		String code = "12345";
+		String source = "CIEL";
+		String fieldName = "obs." + source + ":" + code;
+		when(conceptService.getConceptByMapping(eq(code), eq(source))).thenReturn(mock(Concept.class));
+
+		Concept concept = dataContext.getConceptFromFormFieldName(fieldName);
+		
+		assertFalse(concept == null);
+	}
+	
 	@Test
 	public void should_unmarshallField() throws IOException {
 		

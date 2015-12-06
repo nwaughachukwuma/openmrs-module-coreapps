@@ -116,6 +116,15 @@ public class PatientHeaderFragmentController {
         List<Extension> firstLineFragments = appFrameworkService.getExtensionsForCurrentUser("patientHeader.firstLineFragments");
         Collections.sort(firstLineFragments);
         model.addAttribute("firstLineFragments", firstLineFragments);
+
+        // Adapting the header's content based on actual/current registration app's sections.
+ 		List<AppDescriptor> regAppDescriptors = getRegistrationAppConfig(appFrameworkService);
+ 		List<RegistrationSectionData> regAppSections = getRegistrationData(regAppDescriptors, new DataContextWrapper(sessionContext.getLocale(), wrapper, conceptService, obsService));
+ 		config.addAttribute("regAppSections", regAppSections);
+ 		
+        List<Extension> secondLineFragments = appFrameworkService.getExtensionsForCurrentUser("patientHeader.secondLineFragments");
+        Collections.sort(secondLineFragments);
+        model.addAttribute("secondLineFragments", secondLineFragments);
         
 		List<ExtraPatientIdentifierType> extraPatientIdentifierTypes = new ArrayList<ExtraPatientIdentifierType>();
 
@@ -126,10 +135,6 @@ public class PatientHeaderFragmentController {
 			extraPatientIdentifierTypes.add(new ExtraPatientIdentifierType(type,
                     options.size() > 0 ? options.get(0).isManualEntryEnabled() : true));
 		}
-		
-		// Adapting the header's content based on actual/current registration app's sections.
-		List<AppDescriptor> regAppDescriptors = getRegistrationAppConfig(appFrameworkService);
-		List<RegistrationSectionData> sections = getRegistrationData(regAppDescriptors, new DataContextWrapper(sessionContext.getLocale(), uiUtils, wrapper, conceptService, obsService));
 		
 		config.addAttribute("extraPatientIdentifierTypes", extraPatientIdentifierTypes);
         config.addAttribute("extraPatientIdentifiersMappedByType", wrapper.getExtraIdentifiersMappedByType(sessionContext.getSessionLocation()));
@@ -164,7 +169,7 @@ public class PatientHeaderFragmentController {
 		
 		List<RegistrationSectionData> sections = new ArrayList<RegistrationSectionData>();
 		
-		// Filling the registration data structure first
+		// First: filling the registration data structure
 		RegistrationDataHelper dataHelper = new RegistrationDataHelper();
 		try {
 			sections = dataHelper.getSectionsFromConfig(regAppDesc.getConfig());
@@ -173,9 +178,14 @@ public class PatientHeaderFragmentController {
 			e.printStackTrace();
 		}
 		
-		// Secondly, fetching the registration data
+		// Second: fetching the registration data
 		for(RegistrationSectionData section : sections) {
 			section.fetchData(dataContext);
+			Extension linkExtension = new Extension();
+	 		linkExtension.setLabel("general.edit");
+	 		linkExtension.setType("link");
+	 		linkExtension.setUrl("registrationapp/editSection.page?patientId={{patient.patientId}}&sectionId=" + section.getId() + "&appId=" + regAppDesc.getId());
+	 		section.setLinkExtension(linkExtension);
 		}
 		
 		return sections;

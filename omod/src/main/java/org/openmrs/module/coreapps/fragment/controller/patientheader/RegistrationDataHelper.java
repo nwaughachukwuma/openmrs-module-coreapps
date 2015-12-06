@@ -1,3 +1,17 @@
+/**
+ * The contents of this file are subject to the OpenMRS Public License
+ * Version 1.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at
+ * http://license.openmrs.org
+ *
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+ * License for the specific language governing rights and limitations
+ * under the License.
+ *
+ * Copyright (C) OpenMRS, LLC.  All Rights Reserved.
+ */
+
 package org.openmrs.module.coreapps.fragment.controller.patientheader;
 
 import java.util.ArrayList;
@@ -7,7 +21,6 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.WordUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.codehaus.jackson.JsonNode;
@@ -21,8 +34,8 @@ import org.openmrs.PersonAddress;
 import org.openmrs.PersonAttribute;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.ObsService;
+import org.openmrs.module.appframework.domain.Extension;
 import org.openmrs.module.emrapi.patient.PatientDomainWrapper;
-import org.openmrs.ui.framework.UiUtils;
 
 /**
  * Container classes and data sources to help gather and store all the registration data.
@@ -42,26 +55,20 @@ public class RegistrationDataHelper {
 	public static class DataContextWrapper {
 		
 		private Locale locale;
-		private UiUtils uiUtils;
 		private ConceptService conceptService;
 		private ObsService obsService;
 		private PatientDomainWrapper patientWrapper;
 		private Map<String, PersonAttribute> attrMap = new HashMap<String, PersonAttribute>();
 		
-		public DataContextWrapper(Locale locale, UiUtils uiUtils, PatientDomainWrapper patientWrapper, ConceptService conceptService, ObsService obsService) {
+		public DataContextWrapper(Locale locale, PatientDomainWrapper patientWrapper, ConceptService conceptService, ObsService obsService) {
 			super();
 			this.locale = locale;
-			this.uiUtils = uiUtils;
 			this.conceptService = conceptService;
 			this.obsService = obsService;
 			this.patientWrapper = patientWrapper;
 			for(PersonAttribute attr : patientWrapper.getPatient().getAttributes()) {
 				attrMap.put(attr.getAttributeType().getUuid(), attr);
 			}
-		}
-
-		public UiUtils getUiUtils() {
-			return uiUtils;
 		}
 
 		public Map<String, PersonAttribute> getAttrMap() {
@@ -96,12 +103,12 @@ public class RegistrationDataHelper {
 			
 			String conceptSource = null;
 			if(formFieldName != null) {
-				conceptSource=formFieldName.substring( formFieldName.indexOf('.') + 1, formFieldName.indexOf(':') );
+				conceptSource = formFieldName.substring( formFieldName.indexOf('.') + 1, formFieldName.indexOf(':') );
 			}
 		
 			String conceptCode = null;
 			if(formFieldName != null) {
-				conceptCode=formFieldName.substring( formFieldName.indexOf(':') + 1 );
+				conceptCode = formFieldName.substring( formFieldName.indexOf(':') + 1 );
 			}
 			
 			Concept concept = conceptService.getConceptByMapping(conceptCode, conceptSource);
@@ -185,8 +192,6 @@ public class RegistrationDataHelper {
 		 * @return
 		 */
 		public boolean fetchData(final DataContextWrapper dataContext) {
-			setLabel(dataContext.getUiUtils().message(getLabel())); // i18n the field's label
-			
 			boolean success = false;
 			
 			if(getType().equals("obs")) {
@@ -222,8 +227,8 @@ public class RegistrationDataHelper {
 				String question = conceptQuestion.getName(dataContext.getLocale()).toString();
 				String answer = conceptAnswer.getName(dataContext.getLocale()).toString();
 				if(answer != null) {
-					fieldLabels.add(WordUtils.capitalize(question.toLowerCase()));
-					fieldValues.add(WordUtils.capitalize(answer.toLowerCase()));
+					fieldLabels.add(question);
+					fieldValues.add(answer);
 					return true;
 				}
 				else {
@@ -244,12 +249,15 @@ public class RegistrationDataHelper {
 			
 			PersonAttribute attr = dataContext.getAttributes().get(getUuid());
 			if(attr != null) {
-				fieldLabels.add(WordUtils.capitalize( attr.getAttributeType().getName() ));	// TODO: Check i18n on PersonAttributeType's name
-				fieldValues.add(WordUtils.capitalize(attr.getValue()));
+				fieldLabels.add(attr.getAttributeType().getName());	// TODO: Check i18n on PersonAttributeType's name
+				fieldValues.add(attr.getValue());
 				return true;
 			}
-			// TODO Log this somehow: reg app attribute not found in patient 'X'
-			return false;
+			else {
+				fieldLabels.add(getLabel());
+				return false;
+				// TODO Log this somehow: reg app attribute not found in patient 'X'
+			}
 		}
 		
 		/*
@@ -261,23 +269,23 @@ public class RegistrationDataHelper {
 			
 			if (address.getCityVillage() != null) {
 				fieldLabels.add("Village");	// TODO I18N
-				fieldValues.add(WordUtils.capitalize(address.getCityVillage()));
+				fieldValues.add(address.getCityVillage());
 			}
 			if (address.getCountry() != null) {
 				fieldLabels.add("Country");	// TODO I18N
-				fieldValues.add(WordUtils.capitalize(address.getCountry()));
+				fieldValues.add(address.getCountry());
 			}
 			if (address.getAddress1() != null) {
 				fieldLabels.add("Address 1");	// TODO I18N
-				fieldValues.add(WordUtils.capitalize(address.getAddress1()));
+				fieldValues.add(address.getAddress1());
 			}
 			if (address.getAddress2() != null) {
 				fieldLabels.add("Address 2");	// TODO I18N
-				fieldValues.add(WordUtils.capitalize(address.getAddress2()));
+				fieldValues.add(address.getAddress2());
 			}
 			if (address.getStateProvince() != null) {
 				fieldLabels.add("Province");	// TODO I18N
-				fieldValues.add(WordUtils.capitalize(address.getStateProvince()));
+				fieldValues.add(address.getStateProvince());
 			}
 			
 			if (fieldValues.isEmpty()) {
@@ -323,9 +331,13 @@ public class RegistrationDataHelper {
 	 */
 	public static class RegistrationSectionData {
 		
+		// Fields mapped by Jackson straight from the config JSON
 		private String id;
 		private String label;
 		private List<RegistrationQuestionData> questions;
+		
+		// Other
+		private Extension linkExtension = new Extension();
 		
 		public RegistrationSectionData() {
 			super();
@@ -355,9 +367,15 @@ public class RegistrationDataHelper {
 			this.questions = questions;
 		}
 		
+		public Extension getLinkExtension() {
+			return linkExtension;
+		}
+
+		public void setLinkExtension(Extension linkExtension) {
+			this.linkExtension = linkExtension;
+		}
+		
 		public boolean fetchData(final DataContextWrapper dataContext) {
-			
-			setLabel( dataContext.getUiUtils().message(getLabel()) ); // i18n the section
 			
 			if(CollectionUtils.isEmpty(questions)) {
 				return false;
@@ -367,8 +385,6 @@ public class RegistrationDataHelper {
 				if(CollectionUtils.isEmpty(question.getFields())) {
 					return false;
 				}
-				
-				question.setLegend( dataContext.getUiUtils().message(question.getLegend()) ); // i18n the questions
 				
 				boolean fieldFetched = false;
 				for(RegistrationFieldData field : question.getFields()) {

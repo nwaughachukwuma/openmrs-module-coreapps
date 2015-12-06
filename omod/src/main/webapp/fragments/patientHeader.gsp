@@ -136,33 +136,22 @@
                 </a>
             </span>
 
-            <% if(includeFragments.isEmpty() == false) { %>
-                <% includeFragments.each { %>
-                    ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
-                <% } %>
+            <% firstLineFragments.each { %>
+                ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
             <% } %>
             
             <div class="hidden" id="contactInfoContent" class="contact-info-content">
                 ${ ui.includeFragment("coreapps", "patientdashboard/contactInfoInline", [ patient: config.patient, contextModel: appContextModel ]) }
+
+                <% config.regAppSections.each { %>
+                    <% if (it.id != "contactInfo") { %> <!-- This has to go and we need to handle the "contactInfo" section properly -->
+                        ${ ui.includeFragment("coreapps", "patientdashboard/registrationSection",
+                            [ contextModel: appContextModel, section: it ]) }
+                    <% } %>
+                <% } %>
             </div>
         </h1>
-        <% if (config.activeVisit) { %>
-            <% def visit = config.activeVisit.visit %>
 
-            <div class="active-visit-started-at-message">
-                ${ui.message("coreapps.patientHeader.activeVisit.at", config.activeVisitStartDatetime)}
-            </div>
-            <% if (config.activeVisit.admitted) { %>
-                <div class="active-visit-message">
-                    ${ui.message("coreapps.patientHeader.activeVisit.inpatient", ui.format(config.activeVisit.latestAdtEncounter.location))}
-                </div>
-            <% } else { %>
-                <div class="active-visit-message">
-                    ${ui.message("coreapps.patientHeader.activeVisit.outpatient")}
-                </div>
-            <% } %>
-
-        <% } %>
     </div>
 
     <div class="identifiers">
