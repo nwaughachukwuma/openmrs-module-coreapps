@@ -14,13 +14,17 @@
 
 package org.openmrs.module.coreapps.fragment.controller.patientheader;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.codehaus.jackson.JsonNode;
@@ -33,9 +37,17 @@ import org.openmrs.Obs;
 import org.openmrs.PersonAddress;
 import org.openmrs.PersonAttribute;
 import org.openmrs.api.ConceptService;
+import org.openmrs.api.LocationService;
 import org.openmrs.api.ObsService;
 import org.openmrs.module.appframework.domain.Extension;
 import org.openmrs.module.emrapi.patient.PatientDomainWrapper;
+
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.converters.Converter;
+import com.thoughtworks.xstream.converters.MarshallingContext;
+import com.thoughtworks.xstream.converters.UnmarshallingContext;
+import com.thoughtworks.xstream.io.HierarchicalStreamReader;
+import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 
 /**
  * Container classes and data sources to help gather and store all the registration data.
@@ -57,14 +69,16 @@ public class RegistrationDataHelper {
 		private Locale locale;
 		private ConceptService conceptService;
 		private ObsService obsService;
+		private LocationService locationService;
 		private PatientDomainWrapper patientWrapper;
 		private Map<String, PersonAttribute> attrMap = new HashMap<String, PersonAttribute>();
 		
-		public DataContextWrapper(Locale locale, PatientDomainWrapper patientWrapper, ConceptService conceptService, ObsService obsService) {
+		public DataContextWrapper(Locale locale, PatientDomainWrapper patientWrapper, ConceptService conceptService, ObsService obsService, LocationService locationService) {
 			super();
 			this.locale = locale;
 			this.conceptService = conceptService;
 			this.obsService = obsService;
+			this.locationService = locationService;
 			this.patientWrapper = patientWrapper;
 			for(PersonAttribute attr : patientWrapper.getPatient().getAttributes()) {
 				attrMap.put(attr.getAttributeType().getUuid(), attr);
@@ -85,6 +99,10 @@ public class RegistrationDataHelper {
 
 		public ObsService getObsService() {
 			return obsService;
+		}
+		
+		public LocationService getLocationService() {
+			return locationService;
 		}
 
 		public PatientDomainWrapper getPatientWrapper() {
@@ -120,6 +138,39 @@ public class RegistrationDataHelper {
 	 * For Jackson unmarshalling of registration app's questions's fields
 	 */
 	public static class RegistrationFieldData {
+		
+		/*
+		 * XStream converter for unmarshalling the Address Template XML
+		 * 		into a Map<String, String> of what is inside <nameMappings/>. 
+		 */
+		protected static class AddressTemplateConverter implements Converter {
+
+	        public boolean canConvert(Class clazz) {
+	            return AbstractMap.class.isAssignableFrom(clazz);
+	        }
+
+	        @Override
+			public void marshal(Object arg0, HierarchicalStreamWriter writer, MarshallingContext context) {}
+
+	        public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
+
+	            Map<String, String> map = new LinkedHashMap<String, String>();	// LinkedHashMap to keep the Address Template XML order. 
+	            reader.moveDown();	// Get down the nameMappings, sizeMappings... etc level
+
+	            while(reader.hasMoreChildren()) {
+	            	if(reader.getNodeName().equals("nameMappings")) {
+	            		while(reader.hasMoreChildren()) {
+	            			reader.moveDown();
+	            			String key = reader.getAttribute("name");
+	                        String value = reader.getAttribute("value");
+	                        map.put(key, value);
+	                        reader.moveUp();
+	            		}
+	            	}
+	            }
+	            return map;
+	        }
+	    }
 		
 		// Fields mapped by Jackson straight from the config JSON
 		private String uuid;
@@ -260,40 +311,52 @@ public class RegistrationDataHelper {
 			}
 		}
 		
-		/*
-		 * TODO: Fetch the needed fields only based on the address mapping configuration
-		 */
+		protected Map<String, String> getAddressTemplateNameMappings(final LocationService locationService) {
+			
+			XStream xstream = new XStream();
+			xstream.alias("org.openmrs.layout.web.address.AddressTemplate", java.util.Map.class);
+			xstream.registerConverter(new AddressTemplateConverter());
+			
+			String addressTemplateXml = locationService.getAddressTemplate();
+			@SuppressWarnings("unchecked")
+			Map<String, String> nameMappings = (Map<String, String>) xstream.fromXML(addressTemplateXml);
+			
+			return nameMappings;
+		}
+		
 		protected boolean fetchAddressData(final DataContextWrapper dataContext) {
 			
 			PersonAddress address = dataContext.getPatientWrapper().getPatient().getPersonAddress();
 			
-			if (address.getCityVillage() != null) {
-				fieldLabels.add("Village");	// TODO I18N
-				fieldValues.add(address.getCityVillage());
-			}
-			if (address.getCountry() != null) {
-				fieldLabels.add("Country");	// TODO I18N
-				fieldValues.add(address.getCountry());
-			}
-			if (address.getAddress1() != null) {
-				fieldLabels.add("Address 1");	// TODO I18N
-				fieldValues.add(address.getAddress1());
-			}
-			if (address.getAddress2() != null) {
-				fieldLabels.add("Address 2");	// TODO I18N
-				fieldValues.add(address.getAddress2());
-			}
-			if (address.getStateProvince() != null) {
-				fieldLabels.add("Province");	// TODO I18N
-				fieldValues.add(address.getStateProvince());
-			}
-			
-			if (fieldValues.isEmpty()) {
-				// TODO: Log this somehow, no relevant address fields found for patient 'X'
+			Map<String, String> nameMappings = getAddressTemplateNameMappings(dataContext.getLocationService());	// The Address Template list of name mappings is used as the ref.
+			if(CollectionUtils.isEmpty(nameMappings.keySet())) {
+				// TODO: Log this somehow, no address level names found
 				return false;
 			}
-			else
-				return true;
+			
+			Map<String, String> addressAsMap = null;
+			try {
+				addressAsMap = BeanUtils.describe(address);
+			} catch (Exception e) {
+				// TODO: Log this somehow, no address level values found
+				e.printStackTrace();
+				return false;
+			}
+
+			for(String addressLevelName : nameMappings.keySet()) {
+				fieldLabels.add(nameMappings.get(addressLevelName));
+			
+				String addressLevelValue = addressAsMap.get(addressLevelName);
+				if(StringUtils.isEmpty(addressLevelValue) == false) {
+					fieldValues.add(addressLevelValue);
+				}
+				else {
+					// TODO: Log this
+					fieldValues.add("");
+				}
+			}
+			
+			return true;
 		}
 	}
 		

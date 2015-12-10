@@ -12,7 +12,9 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
@@ -25,7 +27,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openmrs.Concept;
 import org.openmrs.Patient;
+import org.openmrs.PersonAddress;
+import org.openmrs.api.APIException;
 import org.openmrs.api.ConceptService;
+import org.openmrs.api.LocationService;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.DataContextWrapper;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationFieldData;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationQuestionData;
@@ -39,7 +44,9 @@ public class RegistrationDataHelperTest {
 	
 	private DataContextWrapper dataContext;
 	private ConceptService conceptService;
+	private LocationService locationService;
 	private PatientDomainWrapper patientWrapper;
+	private Patient patient;
 	
 	// Test helper: Resource as ObjectNode
 	private ObjectNode getConfigFromResource(String resPath) throws IOException {
@@ -56,19 +63,22 @@ public class RegistrationDataHelperTest {
 	}
 	
 	@Before
-	public void before() {
+	public void before() throws APIException, IOException {
 		
 		dataHelper = new RegistrationDataHelper();
 		conceptService = mock(ConceptService.class);
+		locationService = mock(LocationService.class);
+		when(locationService.getAddressTemplate()).thenReturn( getResourceAsString("addressTemplate.xml") );
 		patientWrapper = mock(PatientDomainWrapper.class);
-		when(patientWrapper.getPatient()).thenReturn(mock(Patient.class));
-		dataContext = new DataContextWrapper(null, patientWrapper, conceptService, null);
+		patient = mock(Patient.class);
+		when(patientWrapper.getPatient()).thenReturn(patient);
+		dataContext = new DataContextWrapper(null, patientWrapper, conceptService, null, locationService);
 		log = spy(LogFactory.getLog(RegistrationDataHelper.class));
 		dataHelper.setLog(log);
 	}
 
 	@Test
-	public void should_returnConceptFromFormFieldName() throws IOException {
+	public void should_returnConceptFromFormFieldName() {
 
 		String code = "12345";
 		String source = "CIEL";
@@ -124,6 +134,7 @@ public class RegistrationDataHelperTest {
 		// This simulates appDescriptor.getConfig()
 		ObjectNode config = getConfigFromResource("regapp_config_noSections.json");
 
+		@SuppressWarnings("unused")
 		List<RegistrationSectionData> sections = dataHelper.getSectionsFromConfig(config);		
 		
 		verify(log, times(1)).error(anyString());
@@ -139,4 +150,53 @@ public class RegistrationDataHelperTest {
 		
 		assertEquals(sections.size(), 4);
 	}
+	
+	@Test
+	public void shouldGetAddressTemplateNameMappings() {
+		
+		RegistrationFieldData field = new RegistrationFieldData(); 
+		
+		Map<String, String> nameMappings = field.getAddressTemplateNameMappings(locationService);
+		
+		assertEquals(nameMappings.get("countyDistrict"), "Location.district");
+		assertEquals(nameMappings.get("address1"), "Location.address1");
+		assertEquals(nameMappings.get("country"), "Location.country");
+		assertEquals(nameMappings.get("stateProvince"), "Location.stateProvince");
+		assertEquals(nameMappings.get("cityVillage"), "Location.cityVillage");
+	}
+	
+	@Test
+	public void shouldGetAddressDataInOrder() throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+		
+		String address1 = "Main Street, 1";
+		String cityVillage = "Towney";
+		String countyDistrict = "The County";
+		String stateProvince = "Sunshine State";
+		String country = "Neverland";
+		
+		PersonAddress address = new PersonAddress();
+		address.setAddress1(address1);
+		address.setCityVillage(cityVillage);
+		address.setCountyDistrict(countyDistrict);
+		address.setStateProvince(stateProvince);
+		address.setCountry(country);
+
+		when(patient.getPersonAddress()).thenReturn(address);
+		
+		RegistrationFieldData field = new RegistrationFieldData();
+		field.fetchAddressData(dataContext);
+		
+		assertEquals(field.getFieldLabels().size(), 5);
+		assertEquals(field.getFieldLabels().get(0), "Location.district");
+		assertEquals(field.getFieldValues().get(0), countyDistrict);
+		assertEquals(field.getFieldLabels().get(1), "Location.address1");
+		assertEquals(field.getFieldValues().get(1), address1);
+		assertEquals(field.getFieldLabels().get(2), "Location.country");
+		assertEquals(field.getFieldValues().get(2), country);
+		assertEquals(field.getFieldLabels().get(3), "Location.stateProvince");
+		assertEquals(field.getFieldValues().get(3), stateProvince);
+		assertEquals(field.getFieldLabels().get(4), "Location.cityVillage");
+		assertEquals(field.getFieldValues().get(4), cityVillage);
+	}
+	
 }

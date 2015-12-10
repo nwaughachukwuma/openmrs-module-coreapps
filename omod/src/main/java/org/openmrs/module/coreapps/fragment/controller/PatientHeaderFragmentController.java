@@ -32,6 +32,7 @@ import org.openmrs.PatientIdentifierType;
 import org.openmrs.PersonName;
 import org.openmrs.api.APIException;
 import org.openmrs.api.ConceptService;
+import org.openmrs.api.LocationService;
 import org.openmrs.api.ObsService;
 import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
@@ -72,7 +73,9 @@ public class PatientHeaderFragmentController {
 	                       @SpringBean("baseIdentifierSourceService") IdentifierSourceService identifierSourceService,
                            @FragmentParam(required = false, value="appContextModel") AppContextModel appContextModel,
 	                       @FragmentParam("patient") Object patient, @InjectBeans PatientDomainWrapper wrapper,
-	                       @SpringBean("conceptService") ConceptService conceptService, @SpringBean("obsService") ObsService obsService, @SpringBean("personService") PersonService personService,
+	                       @SpringBean("conceptService") ConceptService conceptService, @SpringBean("obsService") ObsService obsService,
+	                       @SpringBean("locationService") LocationService locationService,
+	                       @SpringBean("personService") PersonService personService,
 	                       @SpringBean("appFrameworkService") AppFrameworkService appFrameworkService,
 	                       @SpringBean("adtService") AdtService adtService, UiSessionContext sessionContext,
                            UiUtils uiUtils,
@@ -119,7 +122,7 @@ public class PatientHeaderFragmentController {
 
         // Adapting the header's content based on actual/current registration app's sections.
  		List<AppDescriptor> regAppDescriptors = getRegistrationAppConfig(appFrameworkService);
- 		List<RegistrationSectionData> regAppSections = getRegistrationData(regAppDescriptors, new DataContextWrapper(sessionContext.getLocale(), wrapper, conceptService, obsService));
+ 		List<RegistrationSectionData> regAppSections = getRegistrationData(regAppDescriptors, new DataContextWrapper(sessionContext.getLocale(), wrapper, conceptService, obsService, locationService));
  		config.addAttribute("regAppSections", regAppSections);
  		
         List<Extension> secondLineFragments = appFrameworkService.getExtensionsForCurrentUser("patientHeader.secondLineFragments");
