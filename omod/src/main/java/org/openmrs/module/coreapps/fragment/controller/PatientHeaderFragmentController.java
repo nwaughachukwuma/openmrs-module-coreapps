@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.openmrs.Location;
@@ -28,16 +29,23 @@ import org.openmrs.Patient;
 import org.openmrs.PatientIdentifierType;
 import org.openmrs.PersonName;
 import org.openmrs.api.APIException;
+import org.openmrs.api.ConceptService;
+import org.openmrs.api.LocationService;
+import org.openmrs.api.ObsService;
 import org.openmrs.api.context.Context;
 import org.openmrs.layout.web.name.NameSupport;
 import org.openmrs.layout.web.name.NameTemplate;
 import org.openmrs.module.appframework.context.AppContextModel;
+import org.openmrs.module.appframework.domain.AppDescriptor;
 import org.openmrs.module.appframework.domain.Extension;
 import org.openmrs.module.appframework.service.AppFrameworkService;
 import org.openmrs.module.appui.UiSessionContext;
 import org.openmrs.module.coreapps.CoreAppsProperties;
 import org.openmrs.module.coreapps.contextmodel.PatientContextModel;
 import org.openmrs.module.coreapps.contextmodel.VisitContextModel;
+import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper;
+import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.DataContextWrapper;
+import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationSectionData;
 import org.openmrs.module.emrapi.EmrApiProperties;
 import org.openmrs.module.emrapi.adt.AdtService;
 import org.openmrs.module.emrapi.patient.PatientDomainWrapper;
@@ -62,6 +70,8 @@ public class PatientHeaderFragmentController {
 	                       @SpringBean("baseIdentifierSourceService") IdentifierSourceService identifierSourceService,
                            @FragmentParam(required = false, value="appContextModel") AppContextModel appContextModel,
 	                       @FragmentParam("patient") Object patient, @InjectBeans PatientDomainWrapper wrapper,
+	                       @SpringBean("conceptService") ConceptService conceptService, @SpringBean("obsService") ObsService obsService,
+	                       @SpringBean("locationService") LocationService locationService,
 	                       @SpringBean("appFrameworkService") AppFrameworkService appFrameworkService,
 	                       @SpringBean("adtService") AdtService adtService, UiSessionContext sessionContext,
                            UiUtils uiUtils,
@@ -103,11 +113,14 @@ public class PatientHeaderFragmentController {
         Collections.sort(firstLineFragments);
         model.addAttribute("firstLineFragments", firstLineFragments);
 
-        
+        // Adapting the header's content based on actual/current registration app's sections.
+ 		List<AppDescriptor> regAppDescriptors = getRegistrationAppConfig(appFrameworkService);
+ 		List<RegistrationSectionData> regAppSections = getRegistrationData(regAppDescriptors, new DataContextWrapper(sessionContext.getLocale(), wrapper, conceptService, obsService, locationService));
+ 		config.addAttribute("regAppSections", regAppSections);
+ 		
         List<Extension> secondLineFragments = appFrameworkService.getExtensionsForCurrentUser("patientHeader.secondLineFragments");
         Collections.sort(secondLineFragments);
         model.addAttribute("secondLineFragments", secondLineFragments);
-
         
 		List<ExtraPatientIdentifierType> extraPatientIdentifierTypes = new ArrayList<ExtraPatientIdentifierType>();
 
@@ -118,11 +131,68 @@ public class PatientHeaderFragmentController {
 			extraPatientIdentifierTypes.add(new ExtraPatientIdentifierType(type,
                     options.size() > 0 ? options.get(0).isManualEntryEnabled() : true));
 		}
-
+		
 		config.addAttribute("extraPatientIdentifierTypes", extraPatientIdentifierTypes);
         config.addAttribute("extraPatientIdentifiersMappedByType", wrapper.getExtraIdentifiersMappedByType(sessionContext.getSessionLocation()));
         config.addAttribute("defaultDashboard", coreAppsProperties.getDefaultDashboard());
     }
+
+	/**
+	 * @param appFrameworkService
+	 * @return The currently enabled Registration Apps AppDescriptors.
+	 */
+	protected List<AppDescriptor> getRegistrationAppConfig(final AppFrameworkService appFrameworkService) {
+		final List<AppDescriptor> regAppDescriptors = new ArrayList<AppDescriptor>();
+		for(AppDescriptor appDesc : appFrameworkService.getAllEnabledApps()) {
+			if (StringUtils.equals(appDesc.getInstanceOf(), "registrationapp.registerPatient")) {
+				regAppDescriptors.add(appDesc);
+			}
+		}
+		return regAppDescriptors;
+	}
+	
+	protected List<RegistrationSectionData> getRegistrationData(List<AppDescriptor> regAppDescriptors, final DataContextWrapper dataContext) {
+		
+		if (CollectionUtils.isEmpty(regAppDescriptors)) {
+			throw new APIException("No Registration App instance enabled.");
+			// TODO Check what REALLY happens by default when there are no reg apps around.
+		}
+		if (regAppDescriptors.size() > 1) {
+			// TODO Check whether this is possible
+			throw new APIException("Multiple Registration App instances enabled at the same time.");
+		}
+		final AppDescriptor regAppDesc = regAppDescriptors.get(0);
+		
+		List<RegistrationSectionData> sections = new ArrayList<RegistrationSectionData>();
+		
+		// First: filling the registration data structure
+		RegistrationDataHelper dataHelper = new RegistrationDataHelper();
+		try {
+			sections = dataHelper.getSectionsFromConfig(regAppDesc.getConfig());
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		// Second: fetching the registration data
+		for (RegistrationSectionData section : sections) {
+			section.fetchData(dataContext);
+			Extension linkExtension = new Extension();
+	 		linkExtension.setLabel("general.edit");
+	 		linkExtension.setType("link");
+	 		linkExtension.setUrl("registrationapp/editSection.page?patientId={{patient.patientId}}&sectionId=" + section.getId() + "&appId=" + regAppDesc.getId());
+	 		/*
+	 		 * We don't allow edit links for sections where obs-type fields are involved.
+	 		 * This is because registration app's editSection.gsp doesn't handle them
+	 		 * 		and it doesn't actually fail on them either, giving the impression that everything was saved as expected.
+	 		 */
+	 		if (!section.isWithObs()) {
+	 			section.setLinkExtension(linkExtension);
+	 		}
+		}
+		
+		return sections;
+	}
 
     private Map<String,String> getNames(PersonName personName) {
 

@@ -1,91 +1,90 @@
 <%
-def patient = config.patient
+    def patient = config.patient
     def patientNames = config.patientNames
+    def dateFormat = new java.text.SimpleDateFormat("dd MMM yyyy hh:mm a")
 
-        def dateFormat = new java.text.SimpleDateFormat("dd MMM yyyy hh:mm a")
+    ui.includeCss("coreapps", "patientHeader.css")
+    ui.includeJavascript("coreapps", "patientdashboard/patient.js")
 
-            ui.includeCss("coreapps", "patientHeader.css")
-            ui.includeJavascript("coreapps", "patientdashboard/patient.js")
+    appContextModel.put("returnUrl", ui.thisUrl())
+%>
 
-            appContextModel.put("returnUrl", ui.thisUrl())
-            %>
+<script type="text/javascript">
+    
+    var addMessage = "${ ui.message("coreapps.patient.identifier.add") }";
 
-
-            <script type="text/javascript">
-                var addMessage = "${ ui.message("coreapps.patient.identifier.add") }";
-                jq(document).ready(function () {
-                    createEditPatientIdentifierDialog(${patient.id});
-                    jq("#patientIdentifierValue").keyup(function(event){
-                        var oldValue = jq("#patientIdentifierValue").val();
-                        var newValue = jq("#hiddenInitialIdentifierValue").val();
-                        if(oldValue==newValue){
-                            jq('.confirm').attr("disabled", "disabled");
-                            jq('.confirm').addClass("disabled");
-                        }else{
-                            jq('.confirm').removeAttr("disabled");
-                            jq('.confirm').removeClass("disabled");
-                            if(event.keyCode == 13){
+    jq(document).ready(function () {
+        createEditPatientIdentifierDialog(${patient.id});
+        jq("#patientIdentifierValue").keyup(function(event) {
+            var oldValue = jq("#patientIdentifierValue").val();
+            var newValue = jq("#hiddenInitialIdentifierValue").val();
+            if (oldValue == newValue) {
+                jq('.confirm').attr("disabled", "disabled");
+                jq('.confirm').addClass("disabled");
+            } else {
+                jq('.confirm').removeAttr("disabled");
+                jq('.confirm').removeClass("disabled");
+                if (event.keyCode == 13) {
                     //ENTER key has been pressed
                     jq('#confirmIdentifierId').click();
                 }
-            }
+        }
+    });
 
-        });
+    jq(".editPatientIdentifier").click(function (event) {
 
-                    jq(".editPatientIdentifier").click(function (event) {
+        var patientIdentifierId = jq(event.target).attr('data-patient-identifier-id');
+        var identifierTypeId = jq(event.target).attr("data-identifier-type-id");
+        var identifierTypeName = jq(event.target).attr("data-identifier-type-name");
+        var patientIdentifierValue = jq(event.target).attr("data-patient-identifier-value");
 
-                        var patientIdentifierId = jq(event.target).attr('data-patient-identifier-id');
-                        var identifierTypeId = jq(event.target).attr("data-identifier-type-id");
-                        var identifierTypeName = jq(event.target).attr("data-identifier-type-name");
-                        var patientIdentifierValue = jq(event.target).attr("data-patient-identifier-value");
+        jq("#hiddenIdentifierTypeId").val(identifierTypeId);
+        jq("#hiddenInitialIdentifierValue").val(patientIdentifierValue);
+        jq("#hiddenPatientIdentifierId").val(patientIdentifierId);
+        jq("#identifierTypeNameSpan").text(identifierTypeName);
+        jq("#patientIdentifierValue").val(patientIdentifierValue);
 
-                        jq("#hiddenIdentifierTypeId").val(identifierTypeId);
-                        jq("#hiddenInitialIdentifierValue").val(patientIdentifierValue);
-                        jq("#hiddenPatientIdentifierId").val(patientIdentifierId);
-                        jq("#identifierTypeNameSpan").text(identifierTypeName);
-                        jq("#patientIdentifierValue").val(patientIdentifierValue);
+        showEditPatientIdentifierDialog();
 
-                        showEditPatientIdentifierDialog();
+        jq('.confirm').attr("disabled", "disabled");
+        jq('.confirm').addClass("disabled");
 
-                        jq('.confirm').attr("disabled", "disabled");
-                        jq('.confirm').addClass("disabled");
+    });
 
-                    });
-
-        // generally clicking on the header should return to the clinician-facing dashboard, but we added this
-        // global property to allow the link to go to the "Visits" dashboard for legacy implementations
-        <% if (!config.defaultDashboard || config.defaultDashboard.toUpperCase() != 'VISITS') { %>
+    // generally clicking on the header should return to the clinician-facing dashboard, but we added this
+    // global property to allow the link to go to the "Visits" dashboard for legacy implementations
+    <% if (!config.defaultDashboard || config.defaultDashboard.toUpperCase() != 'VISITS') { %>
+        jq(".demographics .name").click(function () {
+            emr.navigateTo({
+                provider: 'coreapps',
+                page: 'clinicianfacing/patient',
+                query: { patientId: ${patient.patient.id} }
+            });
+        })
+        <% } else { %>
             jq(".demographics .name").click(function () {
                 emr.navigateTo({
                     provider: 'coreapps',
-                    page: 'clinicianfacing/patient',
+                    page: 'patientdashboard/patientDashboard',
                     query: { patientId: ${patient.patient.id} }
                 });
             })
-            <% } else { %>
-                jq(".demographics .name").click(function () {
-                    emr.navigateTo({
-                        provider: 'coreapps',
-                        page: 'patientdashboard/patientDashboard',
-                        query: { patientId: ${patient.patient.id} }
-                    });
-                })
-                <% } %>
+            <% } %>
 
-                jq("#patient-header-contactInfo").click(function (){
-                    var contactInfoDialogDiv = jq("#contactInfoContent");
+            jq("#patient-header-contactInfo").click(function (){
+                var contactInfoDialogDiv = jq("#contactInfoContent");
 
-                    if (contactInfoDialogDiv.hasClass('hidden')) {
-                        contactInfoDialogDiv.removeClass('hidden');
-                        jq(this).addClass('expanded');
-                    } else {
-                        contactInfoDialogDiv.addClass('hidden');
-                        jq(this).removeClass('expanded');
-                    }
+                if (contactInfoDialogDiv.hasClass('hidden')) {
+                    contactInfoDialogDiv.removeClass('hidden');
+                    jq(this).addClass('expanded');
+                } else {
+                    contactInfoDialogDiv.addClass('hidden');
+                    jq(this).removeClass('expanded');
+                }
 
-                    return false;
-                });
-            })
+                return false;
+            });
+        })
 </script>
 
 <div class="patient-header <% if (patient.patient.dead) { %>dead<% } %>">
@@ -129,26 +128,28 @@ def patient = config.patient
                     </small>
                 </span>
                 <a href="#" id="patient-header-contactInfo" class="contact-info-label">
-                    <span class="show">${ui.message("coreapps.patientHeader.showcontactinfo")}</span>
+                    <span class="show">${ui.message("coreapps.patientHeader.showregistrationinfo")}</span>
                     <i class="toggle-icon icon-caret-down small"></i>
-                    <span class="hide">${ui.message("coreapps.patientHeader.hidecontactinfo")}</span>
+                    <span class="hide">${ui.message("coreapps.patientHeader.hideregistrationinfo")}</span>
                     <i class="toggle-icon icon-caret-up small"></i>
                 </a>
             </span>
-            <% if(firstLineFragments.isEmpty() == false) { %>
+
             <% firstLineFragments.each { %>
-            ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
-            <% } %>
+                ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
             <% } %>
             
             <div class="hidden" id="contactInfoContent" class="contact-info-content">
-                ${ ui.includeFragment("coreapps", "patientdashboard/contactInfoInline", [ patient: config.patient, contextModel: appContextModel ]) }
+                <div>
+                    <% config.regAppSections.each { %>
+                        ${ ui.includeFragment("coreapps", "patientdashboard/registrationSection",
+                            [ contextModel: appContextModel, section: it ]) }
+                    <% } %>
+                </div>
             </div>
         </h1>
-        <% if(secondLineFragments.isEmpty() == false) { %>
         <% secondLineFragments.each { %>
-        ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment, [patient: config.patient, activeVisit: config.activeVisit])}
-        <% } %>
+            ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment, [patient: config.patient, activeVisit: config.activeVisit])}
         <% } %>
 
     </div>
