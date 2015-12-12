@@ -34,7 +34,6 @@ import org.openmrs.api.APIException;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.LocationService;
 import org.openmrs.api.ObsService;
-import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
 import org.openmrs.layout.web.name.NameSupport;
 import org.openmrs.layout.web.name.NameTemplate;
@@ -75,7 +74,6 @@ public class PatientHeaderFragmentController {
 	                       @FragmentParam("patient") Object patient, @InjectBeans PatientDomainWrapper wrapper,
 	                       @SpringBean("conceptService") ConceptService conceptService, @SpringBean("obsService") ObsService obsService,
 	                       @SpringBean("locationService") LocationService locationService,
-	                       @SpringBean("personService") PersonService personService,
 	                       @SpringBean("appFrameworkService") AppFrameworkService appFrameworkService,
 	                       @SpringBean("adtService") AdtService adtService, UiSessionContext sessionContext,
                            UiUtils uiUtils,
@@ -182,13 +180,20 @@ public class PatientHeaderFragmentController {
 		}
 		
 		// Second: fetching the registration data
-		for(RegistrationSectionData section : sections) {
+		for (RegistrationSectionData section : sections) {
 			section.fetchData(dataContext);
 			Extension linkExtension = new Extension();
 	 		linkExtension.setLabel("general.edit");
 	 		linkExtension.setType("link");
 	 		linkExtension.setUrl("registrationapp/editSection.page?patientId={{patient.patientId}}&sectionId=" + section.getId() + "&appId=" + regAppDesc.getId());
-	 		section.setLinkExtension(linkExtension);
+	 		/*
+	 		 * We don't allow edit links for sections where obs-type fields are involved.
+	 		 * This is because registration app's editSection.gsp doesn't handle them
+	 		 * 		and it doesn't actually fail on them either, giving the impression that everything was saved as expected.
+	 		 */
+	 		if (!section.isWithObs()) {
+	 			section.setLinkExtension(linkExtension);
+	 		}
 		}
 		
 		return sections;

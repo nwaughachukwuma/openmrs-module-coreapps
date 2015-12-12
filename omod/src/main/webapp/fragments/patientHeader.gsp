@@ -8,6 +8,8 @@
     ui.includeJavascript("coreapps", "patientdashboard/patient.js")
 
     appContextModel.put("returnUrl", ui.thisUrl())
+
+    def contactInfo = "contactInfo"
 %>
 
 
@@ -129,9 +131,9 @@
                     </small>
                 </span>
                 <a href="#" id="patient-header-contactInfo" class="contact-info-label">
-                    <span class="show">${ui.message("coreapps.patientHeader.showcontactinfo")}</span>
+                    <span class="show">${ui.message("coreapps.patientHeader.showregistrationinfo")}</span>
                     <i class="toggle-icon icon-caret-down small"></i>
-                    <span class="hide">${ui.message("coreapps.patientHeader.hidecontactinfo")}</span>
+                    <span class="hide">${ui.message("coreapps.patientHeader.hideregistrationinfo")}</span>
                     <i class="toggle-icon icon-caret-up small"></i>
                 </a>
             </span>
@@ -141,14 +143,12 @@
             <% } %>
             
             <div class="hidden" id="contactInfoContent" class="contact-info-content">
-                ${ ui.includeFragment("coreapps", "patientdashboard/contactInfoInline", [ patient: config.patient, contextModel: appContextModel ]) }
-
-                <% config.regAppSections.each { %>
-                    <% if (it.id != "contactInfo") { %> <!-- This has to go and we need to handle the "contactInfo" section properly -->
+                <div>
+                    <% config.regAppSections.each { %>
                         ${ ui.includeFragment("coreapps", "patientdashboard/registrationSection",
                             [ contextModel: appContextModel, section: it ]) }
                     <% } %>
-                <% } %>
+                </div>
             </div>
         </h1>
 

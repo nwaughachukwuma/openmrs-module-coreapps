@@ -34,6 +34,7 @@ import org.codehaus.jackson.node.ObjectNode;
 import org.codehaus.jackson.type.TypeReference;
 import org.openmrs.Concept;
 import org.openmrs.Obs;
+import org.openmrs.Patient;
 import org.openmrs.PersonAddress;
 import org.openmrs.PersonAttribute;
 import org.openmrs.api.ConceptService;
@@ -65,6 +66,8 @@ public class RegistrationDataHelper {
 	 * Wrapper around the possible data sources needed to fetch a field's data
 	 */
 	public static class DataContextWrapper {
+
+		protected Log log = LogFactory.getLog(getClass());
 		
 		private Locale locale;
 		private ConceptService conceptService;
@@ -80,11 +83,15 @@ public class RegistrationDataHelper {
 			this.obsService = obsService;
 			this.locationService = locationService;
 			this.patientWrapper = patientWrapper;
-			for(PersonAttribute attr : patientWrapper.getPatient().getAttributes()) {
+			for(PersonAttribute attr : patientWrapper.getPatient().getActiveAttributes()) {
 				attrMap.put(attr.getAttributeType().getUuid(), attr);
 			}
 		}
-
+		
+		protected void setLog(Log log) {
+			this.log = log;
+		}
+		
 		public Map<String, PersonAttribute> getAttrMap() {
 			return attrMap;
 		}
@@ -104,7 +111,7 @@ public class RegistrationDataHelper {
 		public LocationService getLocationService() {
 			return locationService;
 		}
-
+		
 		public PatientDomainWrapper getPatientWrapper() {
 			return patientWrapper;
 		}
@@ -114,22 +121,38 @@ public class RegistrationDataHelper {
 		}
 		
 		/**
-		 * @param formFieldName Typically a string such as "obs.CIEL.12345"
+		 * @param formFieldName Typically a string such as "obs.CIEL:12345"
 		 * @return null when no Concept could be found
 		 */
 		public Concept getConceptFromFormFieldName(String formFieldName) {
 			
+			Concept concept = null;
+			
 			String conceptSource = null;
-			if(formFieldName != null) {
-				conceptSource = formFieldName.substring( formFieldName.indexOf('.') + 1, formFieldName.indexOf(':') );
-			}
-		
 			String conceptCode = null;
-			if(formFieldName != null) {
-				conceptCode = formFieldName.substring( formFieldName.indexOf(':') + 1 );
+			
+			String warnMsg = "A concept mapping could not be infered from \"formFieldName\":\"" + formFieldName + "\".";
+			if (!StringUtils.isEmpty(formFieldName)) {
+				
+				String prefix = "obs.";
+				if (formFieldName.startsWith(prefix)) {
+					String mapping = formFieldName.substring(prefix.length());
+					
+					String[] split = mapping.split(":");
+					if (split.length == 2) {
+						conceptSource = split[0];
+						conceptCode = split[1];
+						concept = conceptService.getConceptByMapping(conceptCode, conceptSource);
+					}
+					else {
+						log.warn(warnMsg);
+					}
+				}
+				else {
+					log.warn(warnMsg);
+				}
 			}
 			
-			Concept concept = conceptService.getConceptByMapping(conceptCode, conceptSource);
 			return concept;
 		}
 	}
@@ -138,6 +161,29 @@ public class RegistrationDataHelper {
 	 * For Jackson unmarshalling of registration app's questions's fields
 	 */
 	public static class RegistrationFieldData {
+		
+		protected Log log = LogFactory.getLog(getClass());
+		
+		protected static String ADDR_TMPL_NAMEMAPPINGS = "nameMappings";
+		
+		/*
+		 * Atomic field label and field value pair.
+		 */
+		protected class Data {
+			private String label = "";
+			private String value = "";
+			public Data(String label, String value) {
+				super();
+				this.label = label;
+				this.value = value;
+			}
+			public String getLabel() {
+				return label;
+			}
+			public String getValue() {
+				return value;
+			}
+		}
 		
 		/*
 		 * XStream converter for unmarshalling the Address Template XML
@@ -152,19 +198,20 @@ public class RegistrationDataHelper {
 	        @Override
 			public void marshal(Object arg0, HierarchicalStreamWriter writer, MarshallingContext context) {}
 
+	        @Override
 	        public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
 
 	            Map<String, String> map = new LinkedHashMap<String, String>();	// LinkedHashMap to keep the Address Template XML order. 
 	            reader.moveDown();	// Get down the nameMappings, sizeMappings... etc level
 
 	            while(reader.hasMoreChildren()) {
-	            	if(reader.getNodeName().equals("nameMappings")) {
+	            	if(reader.getNodeName().equals(ADDR_TMPL_NAMEMAPPINGS)) {
 	            		while(reader.hasMoreChildren()) {
 	            			reader.moveDown();
 	            			String key = reader.getAttribute("name");
-	                        String value = reader.getAttribute("value");
-	                        map.put(key, value);
-	                        reader.moveUp();
+	            			String value = reader.getAttribute("value");
+	            			map.put(key, value);
+	            			reader.moveUp();
 	            		}
 	            	}
 	            }
@@ -179,8 +226,8 @@ public class RegistrationDataHelper {
 		private String formFieldName;
 		
 		// Output fields
-		private List<String> fieldLabels = new ArrayList<String>();
-		private List<String> fieldValues = new ArrayList<String>();
+		private List<Data> data = new ArrayList<Data>();
+		private boolean withObs = false;
 		
 		public RegistrationFieldData() {
 			super();
@@ -218,23 +265,27 @@ public class RegistrationDataHelper {
 			this.formFieldName = formFieldName;
 		}
 		
-		public List<String> getFieldLabels() {
-			return fieldLabels;
+		public List<Data> getData() {
+			return data;
+		}
+		
+		public boolean isWithObs() {
+			return withObs;
 		}
 
-		public List<String> getFieldValues() {
-			return fieldValues;
+		public void setWithObs(boolean withObs) {
+			this.withObs = withObs;
 		}
 
 		/*
 		 * 'Output' getters
 		 */
 		public String getFieldLabel() {
-			return (fieldLabels.size() == 1) ? fieldLabels.get(0) : "";
+			return (data.size() == 1) ? data.get(0).getLabel() : "";
 		}
 		
 		public String getFieldValue() {
-			return (fieldValues.size() == 1) ? fieldValues.get(0) : "";
+			return (data.size() == 1) ? data.get(0).getValue() : "";
 		}
 		
 		/**
@@ -246,6 +297,7 @@ public class RegistrationDataHelper {
 			boolean success = false;
 			
 			if(getType().equals("obs")) {
+				setWithObs(true);
 				success = fetchObsData(dataContext);
 			}
 			else if(getType().equals("personAttribute")) {
@@ -255,7 +307,7 @@ public class RegistrationDataHelper {
 				success = fetchAddressData(dataContext);
 			}
 			else {
-				// TODO Log this somehow
+				log.error("There is no implementation to handle fields of type: " + getType() + " for field labelled: " + getLabel());
             	success = false;
 			}
 			return success;
@@ -265,7 +317,7 @@ public class RegistrationDataHelper {
 
 			Concept conceptQuestion = dataContext.getConceptFromFormFieldName(formFieldName);
 			if(conceptQuestion == null) {
-				// TODO: Log this properly.
+				log.error("The concept-question could not be fetched for field labelled: " + getLabel() + ", this was the \"obs\"'s \"formFieldName\" provided: " + formFieldName);
 				return false;
 			}
 			
@@ -278,17 +330,16 @@ public class RegistrationDataHelper {
 				String question = conceptQuestion.getName(dataContext.getLocale()).toString();
 				String answer = conceptAnswer.getName(dataContext.getLocale()).toString();
 				if(answer != null) {
-					fieldLabels.add(question);
-					fieldValues.add(answer);
+					data.add(new Data(question, answer));
 					return true;
 				}
 				else {
-					// TODO: Log this properly
+					log.error("The concept coded answer could not be fetched for field labelled: " + getLabel() + ", this was the \"obs\"'s \"formFieldName\" provided: " + formFieldName);
 					return false;
 				}
 			}
 			else if (dataType.equals("Text")) {
-				// TODO: Shehzad to implement
+				// TODO: To be implemented
 				return false;
 			}
 			else {
@@ -300,14 +351,13 @@ public class RegistrationDataHelper {
 			
 			PersonAttribute attr = dataContext.getAttributes().get(getUuid());
 			if(attr != null) {
-				fieldLabels.add(attr.getAttributeType().getName());	// TODO: Check i18n on PersonAttributeType's name
-				fieldValues.add(attr.getValue());
+				data.add(new Data(attr.getAttributeType().getName(), attr.getValue())); // TODO: Check i18n on PersonAttributeType's name
 				return true;
 			}
 			else {
-				fieldLabels.add(getLabel());
+				log.error("The registration PersonAttribute could not be fetched for field labelled: " + getLabel() + ".");
+				data.add(new Data(getLabel(), ""));
 				return false;
-				// TODO Log this somehow: reg app attribute not found in patient 'X'
 			}
 		}
 		
@@ -326,11 +376,12 @@ public class RegistrationDataHelper {
 		
 		protected boolean fetchAddressData(final DataContextWrapper dataContext) {
 			
-			PersonAddress address = dataContext.getPatientWrapper().getPatient().getPersonAddress();
+			Patient patient = dataContext.getPatientWrapper().getPatient();
+			PersonAddress address = patient.getPersonAddress();
 			
 			Map<String, String> nameMappings = getAddressTemplateNameMappings(dataContext.getLocationService());	// The Address Template list of name mappings is used as the ref.
 			if(CollectionUtils.isEmpty(nameMappings.keySet())) {
-				// TODO: Log this somehow, no address level names found
+				log.error("The name mappings could not be retrieved when reading the node <" + ADDR_TMPL_NAMEMAPPINGS + "> of the Address Template XML.");
 				return false;
 			}
 			
@@ -338,22 +389,17 @@ public class RegistrationDataHelper {
 			try {
 				addressAsMap = BeanUtils.describe(address);
 			} catch (Exception e) {
-				// TODO: Log this somehow, no address level values found
-				e.printStackTrace();
+				log.error("There was an error exploring the PersonAddress bean for patient id: " + patient.getId() + ", no address information will be displayed on the patient header.", e);
 				return false;
 			}
 
 			for(String addressLevelName : nameMappings.keySet()) {
-				fieldLabels.add(nameMappings.get(addressLevelName));
-			
 				String addressLevelValue = addressAsMap.get(addressLevelName);
-				if(StringUtils.isEmpty(addressLevelValue) == false) {
-					fieldValues.add(addressLevelValue);
+				if(StringUtils.isEmpty(addressLevelValue)) {
+					log.error("The address level '" + addressLevelName + "' was not found in the PersonAddress for patient id: " + patient.getId() + ", this level will be missing on the patient header.");
+					addressLevelValue = "";
 				}
-				else {
-					// TODO: Log this
-					fieldValues.add("");
-				}
+				data.add(new Data(nameMappings.get(addressLevelName), addressLevelValue));
 			}
 			
 			return true;
@@ -367,7 +413,7 @@ public class RegistrationDataHelper {
 		
 		private String legend;
 		private List<RegistrationFieldData> fields;
-
+		
 		public RegistrationQuestionData() {
 			super();
 		}
@@ -394,13 +440,17 @@ public class RegistrationDataHelper {
 	 */
 	public static class RegistrationSectionData {
 		
+		protected Log log = LogFactory.getLog(getClass());
+		
 		// Fields mapped by Jackson straight from the config JSON
 		private String id;
 		private String label;
 		private List<RegistrationQuestionData> questions;
+		private String onPatientHeader = "left";
 		
 		// Other
 		private Extension linkExtension = new Extension();
+		private boolean withObs = false;
 		
 		public RegistrationSectionData() {
 			super();
@@ -430,6 +480,14 @@ public class RegistrationDataHelper {
 			this.questions = questions;
 		}
 		
+		public String getOnPatientHeader() {
+			return onPatientHeader;
+		}
+
+		public void setOnPatientHeader(String onPatientHeader) {
+			this.onPatientHeader = onPatientHeader;
+		}
+
 		public Extension getLinkExtension() {
 			return linkExtension;
 		}
@@ -438,23 +496,29 @@ public class RegistrationDataHelper {
 			this.linkExtension = linkExtension;
 		}
 		
+		public boolean isWithObs() {
+			return withObs;
+		}
+
+		public void setWithObs(boolean withObs) {
+			this.withObs = withObs;
+		}
+
 		public boolean fetchData(final DataContextWrapper dataContext) {
 			
-			if(CollectionUtils.isEmpty(questions)) {
+			if (CollectionUtils.isEmpty(questions)) {
 				return false;
 			}
 			
-			for(RegistrationQuestionData question : questions) {
+			for (RegistrationQuestionData question : questions) {
 				if(CollectionUtils.isEmpty(question.getFields())) {
 					return false;
 				}
-				
-				boolean fieldFetched = false;
-				for(RegistrationFieldData field : question.getFields()) {
-					fieldFetched = field.fetchData(dataContext);
-					if(fieldFetched == false)
-						// TODO Log this somehow
-						return false;
+				for (RegistrationFieldData field : question.getFields()) {
+					field.fetchData(dataContext);
+					if(field.isWithObs()) {
+						setWithObs(true);
+					}
 				}
 			}
 			

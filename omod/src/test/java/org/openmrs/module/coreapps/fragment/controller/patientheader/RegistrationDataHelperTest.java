@@ -2,6 +2,7 @@ package org.openmrs.module.coreapps.fragment.controller.patientheader;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
@@ -33,6 +34,7 @@ import org.openmrs.api.ConceptService;
 import org.openmrs.api.LocationService;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.DataContextWrapper;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationFieldData;
+import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationFieldData.Data;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationQuestionData;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationSectionData;
 import org.openmrs.module.emrapi.patient.PatientDomainWrapper;
@@ -73,7 +75,7 @@ public class RegistrationDataHelperTest {
 		patient = mock(Patient.class);
 		when(patientWrapper.getPatient()).thenReturn(patient);
 		dataContext = new DataContextWrapper(null, patientWrapper, conceptService, null, locationService);
-		log = spy(LogFactory.getLog(RegistrationDataHelper.class));
+		log = spy(LogFactory.getLog(getClass()));
 		dataHelper.setLog(log);
 	}
 
@@ -88,6 +90,30 @@ public class RegistrationDataHelperTest {
 		Concept concept = dataContext.getConceptFromFormFieldName(fieldName);
 		
 		assertFalse(concept == null);
+	}
+	
+	@Test
+	public void should_warnOnFormFieldNameBadlyPrefixed() {
+
+		String fieldName = "foo:bad.guy";
+
+		dataContext.setLog(log);
+		Concept concept = dataContext.getConceptFromFormFieldName(fieldName);
+		
+		verify(log, times(1)).warn(anyString());
+		assertTrue(concept == null);
+	}
+
+	@Test
+	public void should_warnOnFormFieldNameWithBadMapping() {
+
+		String fieldName = "obs.CIEL_12345";
+
+		dataContext.setLog(log);
+		Concept concept = dataContext.getConceptFromFormFieldName(fieldName);
+		
+		verify(log, times(1)).warn(anyString());
+		assertTrue(concept == null);
 	}
 	
 	@Test
@@ -129,7 +155,7 @@ public class RegistrationDataHelperTest {
 	}
 	
 	@Test
-	public void shouldLogNoSectionsFound() throws IOException {
+	public void should_logNoSectionsFound() throws IOException {
 		
 		// This simulates appDescriptor.getConfig()
 		ObjectNode config = getConfigFromResource("regapp_config_noSections.json");
@@ -141,7 +167,7 @@ public class RegistrationDataHelperTest {
 	}
 	
 	@Test
-	public void shouldReturnSectionsData() throws IOException {
+	public void should_returnSectionsData() throws IOException {
 		
 		// This simulates appDescriptor.getConfig()
 		ObjectNode config = getConfigFromResource("regapp_config.json");
@@ -152,7 +178,7 @@ public class RegistrationDataHelperTest {
 	}
 	
 	@Test
-	public void shouldGetAddressTemplateNameMappings() {
+	public void should_getAddressTemplateNameMappings() {
 		
 		RegistrationFieldData field = new RegistrationFieldData(); 
 		
@@ -166,7 +192,7 @@ public class RegistrationDataHelperTest {
 	}
 	
 	@Test
-	public void shouldGetAddressDataInOrder() throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+	public void should_getAddressDataInOrder() throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 		
 		String address1 = "Main Street, 1";
 		String cityVillage = "Towney";
@@ -186,17 +212,19 @@ public class RegistrationDataHelperTest {
 		RegistrationFieldData field = new RegistrationFieldData();
 		field.fetchAddressData(dataContext);
 		
-		assertEquals(field.getFieldLabels().size(), 5);
-		assertEquals(field.getFieldLabels().get(0), "Location.district");
-		assertEquals(field.getFieldValues().get(0), countyDistrict);
-		assertEquals(field.getFieldLabels().get(1), "Location.address1");
-		assertEquals(field.getFieldValues().get(1), address1);
-		assertEquals(field.getFieldLabels().get(2), "Location.country");
-		assertEquals(field.getFieldValues().get(2), country);
-		assertEquals(field.getFieldLabels().get(3), "Location.stateProvince");
-		assertEquals(field.getFieldValues().get(3), stateProvince);
-		assertEquals(field.getFieldLabels().get(4), "Location.cityVillage");
-		assertEquals(field.getFieldValues().get(4), cityVillage);
+		List<Data> addressData = field.getData();
+		
+		assertEquals(addressData.size(), 5);
+		assertEquals(addressData.get(0).getLabel(), "Location.district");
+		assertEquals(addressData.get(0).getValue(), countyDistrict);
+		assertEquals(addressData.get(1).getLabel(), "Location.address1");
+		assertEquals(addressData.get(1).getValue(), address1);
+		assertEquals(addressData.get(2).getLabel(), "Location.country");
+		assertEquals(addressData.get(2).getValue(), country);
+		assertEquals(addressData.get(3).getLabel(), "Location.stateProvince");
+		assertEquals(addressData.get(3).getValue(), stateProvince);
+		assertEquals(addressData.get(4).getLabel(), "Location.cityVillage");
+		assertEquals(addressData.get(4).getValue(), cityVillage);
 	}
 	
 }
