@@ -166,6 +166,9 @@ public class RegistrationDataHelper {
 		
 		protected static String ADDR_TMPL_NAMEMAPPINGS = "nameMappings";
 		
+		protected static String CONCEPT_CODED = "Coded";
+		protected static String CONCEPT_TEXT = "Text";
+		
 		/*
 		 * Atomic field label and field value pair.
 		 */
@@ -321,16 +324,21 @@ public class RegistrationDataHelper {
 				return false;
 			}
 			
-			String dataType = conceptQuestion.getDatatype().getName(); 
+			String question = conceptQuestion.getName(dataContext.getLocale()).toString();
 			
-			if (dataType.equals("Coded")) {
+			String dataType = conceptQuestion.getDatatype().getName(); 
+			if (dataType.equals(CONCEPT_CODED)) {
+				
 				List<Obs> obsList = dataContext.getObsService().getObservationsByPersonAndConcept( dataContext.getPatientWrapper().getPatient(), conceptQuestion );
-				Obs obs = obsList.get(0);
-				Concept conceptAnswer = obs.getValueCoded();
-				String question = conceptQuestion.getName(dataContext.getLocale()).toString();
-				String answer = conceptAnswer.getName(dataContext.getLocale()).toString();
-				if(answer != null) {
-					data.add(new Data(question, answer));
+				String answer = "";
+				if (CollectionUtils.isEmpty(obsList) == false) {
+					Obs obs = obsList.get(0);
+					Concept conceptAnswer = obs.getValueCoded();
+					answer = conceptAnswer.getName(dataContext.getLocale()).toString();
+				}
+				
+				data.add(new Data(question, answer));
+				if (!StringUtils.isEmpty(answer)) {
 					return true;
 				}
 				else {
@@ -338,7 +346,7 @@ public class RegistrationDataHelper {
 					return false;
 				}
 			}
-			else if (dataType.equals("Text")) {
+			else if (dataType.equals(CONCEPT_TEXT)) {
 				// TODO: To be implemented
 				return false;
 			}

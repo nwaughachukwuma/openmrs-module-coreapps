@@ -3,6 +3,7 @@ package org.openmrs.module.coreapps.fragment.controller.patientheader;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
@@ -14,7 +15,9 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
@@ -27,11 +30,15 @@ import org.codehaus.jackson.type.TypeReference;
 import org.junit.Before;
 import org.junit.Test;
 import org.openmrs.Concept;
+import org.openmrs.ConceptDatatype;
+import org.openmrs.ConceptName;
+import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.PersonAddress;
 import org.openmrs.api.APIException;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.LocationService;
+import org.openmrs.api.ObsService;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.DataContextWrapper;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationFieldData;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper.RegistrationFieldData.Data;
@@ -45,7 +52,9 @@ public class RegistrationDataHelperTest {
 	private Log log;
 	
 	private DataContextWrapper dataContext;
+//	private Locale locale;
 	private ConceptService conceptService;
+	private ObsService obsService;
 	private LocationService locationService;
 	private PatientDomainWrapper patientWrapper;
 	private Patient patient;
@@ -68,13 +77,15 @@ public class RegistrationDataHelperTest {
 	public void before() throws APIException, IOException {
 		
 		dataHelper = new RegistrationDataHelper();
+//		locale = mock(Locale.class);
 		conceptService = mock(ConceptService.class);
+		obsService = mock(ObsService.class);
 		locationService = mock(LocationService.class);
 		when(locationService.getAddressTemplate()).thenReturn( getResourceAsString("addressTemplate.xml") );
 		patientWrapper = mock(PatientDomainWrapper.class);
 		patient = mock(Patient.class);
 		when(patientWrapper.getPatient()).thenReturn(patient);
-		dataContext = new DataContextWrapper(null, patientWrapper, conceptService, null, locationService);
+		dataContext = new DataContextWrapper(null, patientWrapper, conceptService, obsService, locationService);
 		log = spy(LogFactory.getLog(getClass()));
 		dataHelper.setLog(log);
 	}
@@ -226,5 +237,59 @@ public class RegistrationDataHelperTest {
 		assertEquals(addressData.get(4).getLabel(), "Location.cityVillage");
 		assertEquals(addressData.get(4).getValue(), cityVillage);
 	}
+
+	@Test
+	public void should_handleNoObsListFound() {
+		
+		RegistrationFieldData field = new RegistrationFieldData();
+
+		DataContextWrapper context = mock(DataContextWrapper.class);
+		Concept conceptQuestion = mock(Concept.class);
+		when(context.getConceptFromFormFieldName(anyString())).thenReturn(conceptQuestion);
+		when(context.getPatientWrapper()).thenReturn(patientWrapper);
+		when(context.getObsService()).thenReturn(obsService);
+		ConceptDatatype dataType = mock(ConceptDatatype.class);
+		when(dataType.getName()).thenReturn(RegistrationFieldData.CONCEPT_CODED);
+		when(conceptQuestion.getDatatype()).thenReturn(dataType);
+		when(conceptQuestion.getName(any(Locale.class))).thenReturn(mock(ConceptName.class));
+		
+		when(obsService.getObservationsByPersonAndConcept(any(Patient.class), eq(conceptQuestion))).thenReturn(new ArrayList<Obs>());
+		
+		boolean success = field.fetchObsData(context);
+		
+		assertFalse(success);
+		assertEquals(field.getData().size(), 1);
+		assertEquals(field.getData().get(0).getValue(), "");
+	}
 	
+	@Test
+	public void should_handleCodedObsFound() {
+		
+		RegistrationFieldData field = new RegistrationFieldData();
+
+		DataContextWrapper context = mock(DataContextWrapper.class);
+		Concept conceptQuestion = mock(Concept.class);
+		when(context.getConceptFromFormFieldName(anyString())).thenReturn(conceptQuestion);
+		when(context.getPatientWrapper()).thenReturn(patientWrapper);
+		when(context.getObsService()).thenReturn(obsService);
+		ConceptDatatype dataType = mock(ConceptDatatype.class);
+		when(dataType.getName()).thenReturn(RegistrationFieldData.CONCEPT_CODED);
+		when(conceptQuestion.getDatatype()).thenReturn(dataType);
+		when(conceptQuestion.getName(any(Locale.class))).thenReturn(mock(ConceptName.class));
+		
+		final String answer = "obs_answer";
+		final Obs obs = mock(Obs.class);
+		Concept conceptAnswer = mock(Concept.class);
+		when(obs.getValueCoded()).thenReturn(conceptAnswer);
+		ConceptName answerName = mock(ConceptName.class);
+		when(answerName.toString()).thenReturn(answer);
+		when(conceptAnswer.getName(any(Locale.class))).thenReturn(answerName);
+		when(obsService.getObservationsByPersonAndConcept(any(Patient.class), eq(conceptQuestion))).thenReturn(new ArrayList<Obs>() {{ add(obs); }} );
+		
+		boolean success = field.fetchObsData(context);
+		
+		assertTrue(success);
+		assertEquals(field.getData().size(), 1);
+		assertEquals(field.getData().get(0).getValue(), answer);
+	}
 }
