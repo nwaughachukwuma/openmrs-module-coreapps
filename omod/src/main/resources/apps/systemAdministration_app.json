@@ -14,7 +14,7 @@
                 "extensionPointId": "org.openmrs.referenceapplication.homepageLink",
                 "type": "link",
                 "label": "coreapps.app.systemAdministration.label",
-                "url": "coreapps/systemadministration/systemAdministration.page",
+                "url": "admin",
                 "icon": "icon-cogs",
                 "order": 100,
                 "requiredPrivilege": "App: coreapps.systemAdministration"
