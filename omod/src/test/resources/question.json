@@ -1,0 +1,22 @@
+{
+   "legend":"My legend",
+   "fields":[
+      {
+         "type":"obs",
+         "formFieldName":"obs.LFHC:912",
+         "label":"My first label",
+         "widget": {
+	        "providerName": "registrationapp",
+	        "fragmentId": "field/personAddressWithHierarchy",
+	        "config": {
+	          "manualFields": ["address1"]
+	        }
+	     }
+      },
+      {
+         "type":"obs",
+         "formFieldName":"obs.LFHC:920",
+         "label":"${project.parent.artifactId}.app.registerPatient.language"
+      }
+   ]
+}

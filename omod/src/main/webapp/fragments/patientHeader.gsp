@@ -8,21 +8,22 @@
     appContextModel.put("returnUrl", ui.thisUrl())
 %>
 
-
 <script type="text/javascript">
+    
     var addMessage = "${ ui.message("coreapps.patient.identifier.add") }";
+
     jq(document).ready(function () {
         createEditPatientIdentifierDialog(${patient.id});
-        jq("#patientIdentifierValue").keyup(function(event){
+        jq("#patientIdentifierValue").keyup(function(event) {
             var oldValue = jq("#patientIdentifierValue").val();
             var newValue = jq("#hiddenInitialIdentifierValue").val();
-            if(oldValue==newValue){
+            if (oldValue == newValue) {
                 jq('.confirm').attr("disabled", "disabled");
                 jq('.confirm').addClass("disabled");
-            }else{
+            } else {
                 jq('.confirm').removeAttr("disabled");
                 jq('.confirm').removeClass("disabled");
-                if(event.keyCode == 13){
+                if (event.keyCode == 13) {
                     //ENTER key has been pressed
                     jq('#confirmIdentifierId').click();
                 }
@@ -55,57 +56,56 @@
                 url: "${ ui.urlBind("/" + contextPath + config.dashboardUrl, [ patientId: patient.patient.id ] ) }"
             });
         })
+            jq("#patient-header-contactInfo").click(function (){
+                var contactInfoDialogDiv = jq("#contactInfoContent");
 
-        jq("#patient-header-contactInfo").click(function (){
-            var contactInfoDialogDiv = jq("#contactInfoContent");
+                if (contactInfoDialogDiv.hasClass('hidden')) {
+                    contactInfoDialogDiv.removeClass('hidden');
+                    jq(this).addClass('expanded');
+                } else {
+                    contactInfoDialogDiv.addClass('hidden');
+                    jq(this).removeClass('expanded');
+                }
 
-            if (contactInfoDialogDiv.hasClass('hidden')) {
-                contactInfoDialogDiv.removeClass('hidden');
-                jq(this).addClass('expanded');
-            } else {
-                contactInfoDialogDiv.addClass('hidden');
-                jq(this).removeClass('expanded');
-            }
-
-            return false;
-        });
-    })
+                return false;
+            });
+        })
 </script>
 
 <div class="patient-header <% if (patient.patient.dead) { %>dead<% } %>">
 
     <% if (patient.patient.dead) { %>
-        <div class="death-header">
-            <span class="death-message">
-                ${ ui.message("coreapps.deadPatient", ui.format(patient.patient.deathDate), ui.format(patient.patient.causeOfDeath)) }
-            </span>
-            <span class="death-info-extension">
-                <%= ui.includeFragment("appui", "extensionPoint", [ id: "patientHeader.deathInfo", contextModel: appContextModel ]) %>
-            </span>
-        </div>
+    <div class="death-header">
+        <span class="death-message">
+            ${ ui.message("coreapps.deadPatient", ui.format(patient.patient.deathDate), ui.format(patient.patient.causeOfDeath)) }
+        </span>
+        <span class="death-info-extension">
+            <%= ui.includeFragment("appui", "extensionPoint", [ id: "patientHeader.deathInfo", contextModel: appContextModel ]) %>
+        </span>
+    </div>
     <% } %>
 
     <div class="demographics">
         <h1 class="name">
             <% patientNames?.each { %>
-                <span>${ it.value }<em>${ui.message(it.key)}</em></span>
+            <span>${ it.value }<em>${ui.message(it.key)}</em></span>
             <% } %>
             &nbsp;
             <span class="gender-age">
                 <span>${ui.message("coreapps.gender." + patient.gender)}&nbsp;</span>
                 <span>
-                <% if (patient.birthdate) { %>
-                <% if (patient.age > 0) { %>
+                    <% if (patient.birthdate) { %>
+                    <% if (patient.age > 0) { %>
                     ${ui.message("coreapps.ageYears", patient.age)} 
-                <% } else if (patient.ageInMonths > 0) { %>
+                    <% } else if (patient.ageInMonths > 0) { %>
                     ${ui.message("coreapps.ageMonths", patient.ageInMonths)}
-                <% } else { %>
+                    <% } else { %>
                     ${ui.message("coreapps.ageDays", patient.ageInDays)}
-                <% } %>   
-                (<% if (patient.birthdateEstimated) { %>~<% } %>${ ui.formatDatePretty(patient.birthdate) })          
-                <% } else { %>
+                    <% } %>   
+                    (<% if (patient.birthdateEstimated) { %>~<% } %>${ ui.formatDatePretty(patient.birthdate) })          
+                    <% } else { %>
                     ${ui.message("coreapps.unknownAge")}
-                <% } %>
+                    <% } %>
                 </span>
                 <span id="edit-patient-demographics" class="edit-info">
                     <small>
@@ -113,14 +113,20 @@
                     </small>
                 </span>
                 <a href="#" id="patient-header-contactInfo" class="contact-info-label">
-                    <span class="show">${ui.message("coreapps.patientHeader.showcontactinfo")}</span>
+                    <span class="show">${ui.message("coreapps.patientHeader.showregistrationinfo")}</span>
                     <i class="toggle-icon icon-caret-down small"></i>
-                    <span class="hide">${ui.message("coreapps.patientHeader.hidecontactinfo")}</span>
+                    <span class="hide">${ui.message("coreapps.patientHeader.hideregistrationinfo")}</span>
                     <i class="toggle-icon icon-caret-up small"></i>
                 </a>
             </span>
+            
             <div class="hidden" id="contactInfoContent" class="contact-info-content">
-                ${ ui.includeFragment("coreapps", "patientdashboard/contactInfoInline", [ patient: config.patient, contextModel: appContextModel ]) }
+                <div>
+                    <% config.regAppSections.each { %>
+                        ${ ui.includeFragment("coreapps", "patientdashboard/registrationSection",
+                            [ contextModel: appContextModel, section: it ]) }
+                    <% } %>
+                </div>
             </div>
 
             <% firstLineFragments.each { %>
@@ -144,74 +150,74 @@
         <br/>
         <% if (config.extraPatientIdentifierTypes && config.extraPatientIdentifiersMappedByType) { %>
 
-            <% config.extraPatientIdentifierTypes.each { extraPatientIdentifierType -> %>
+        <% config.extraPatientIdentifierTypes.each { extraPatientIdentifierType -> %>
 
-                <% def extraPatientIdentifiers = config.extraPatientIdentifiersMappedByType.get(extraPatientIdentifierType.patientIdentifierType) %>
+        <% def extraPatientIdentifiers = config.extraPatientIdentifiersMappedByType.get(extraPatientIdentifierType.patientIdentifierType) %>
 
-                <% if (extraPatientIdentifiers) { %>
-                    <em>${ui.format(extraPatientIdentifierType.patientIdentifierType)}</em>
+        <% if (extraPatientIdentifiers) { %>
+            <em>${ui.format(extraPatientIdentifierType.patientIdentifierType)}</em>
 
-                    <% if (extraPatientIdentifierType.editable) { %>
-                        <% extraPatientIdentifiers.each { extraPatientIdentifier -> %>
-                             <span><a class="editPatientIdentifier" data-patient-identifier-id="${extraPatientIdentifier.id}" data-identifier-type-id="${extraPatientIdentifierType.patientIdentifierType.id}"
-                                data-identifier-type-name="${ui.format(extraPatientIdentifierType.patientIdentifierType)}" data-patient-identifier-value="${extraPatientIdentifier}" href="#${extraPatientIdentifierType.patientIdentifierType.id}">${extraPatientIdentifier}</a></span>
-                        <% } %>
-                    <% } else {%>
-                        <% extraPatientIdentifiers.each { extraPatientIdentifier -> %>
-                            <span>${extraPatientIdentifier}</span>
-                        <% } %>
-                    <% } %>
-
-                <% } else if (extraPatientIdentifierType.editable) { %>
-                    <em>${ui.format(extraPatientIdentifierType.patientIdentifierType)}</em>
-                    <span class="add-id"><a class="editPatientIdentifier"  data-patient-identifier-id="" data-identifier-type-id="${extraPatientIdentifierType.patientIdentifierType.id}"
-                    data-identifier-type-name="${ui.format(extraPatientIdentifierType.patientIdentifierType)}" data-patient-identifier-value=""
-                    href="#${extraPatientIdentifierType.patientIdentifierType.id}">${ui.message("coreapps.patient.identifier.add")}</a></span>
+            <% if (extraPatientIdentifierType.editable) { %>
+            <% extraPatientIdentifiers.each { extraPatientIdentifier -> %>
+            <span><a class="editPatientIdentifier" data-patient-identifier-id="${extraPatientIdentifier.id}" data-identifier-type-id="${extraPatientIdentifierType.patientIdentifierType.id}"
+                data-identifier-type-name="${ui.format(extraPatientIdentifierType.patientIdentifierType)}" data-patient-identifier-value="${extraPatientIdentifier}" href="#${extraPatientIdentifierType.patientIdentifierType.id}">${extraPatientIdentifier}</a></span>
+                <% } %>
+                <% } else {%>
+                <% extraPatientIdentifiers.each { extraPatientIdentifier -> %>
+                <span>${extraPatientIdentifier}</span>
+                <% } %>
                 <% } %>
 
-            <br/>
-            <% } %>
-        <% } %>
-    </div>
+                <% } else if (extraPatientIdentifierType.editable) { %>
+                <em>${ui.format(extraPatientIdentifierType.patientIdentifierType)}</em>
+                <span class="add-id"><a class="editPatientIdentifier"  data-patient-identifier-id="" data-identifier-type-id="${extraPatientIdentifierType.patientIdentifierType.id}"
+                    data-identifier-type-name="${ui.format(extraPatientIdentifierType.patientIdentifierType)}" data-patient-identifier-value=""
+                    href="#${extraPatientIdentifierType.patientIdentifierType.id}">${ui.message("coreapps.patient.identifier.add")}</a></span>
+                    <% } %>
 
-    <div class="unknown-patient" style= <%=(!patient.unknownPatient) ? "display:none" : ""%>>
-        ${ui.message("coreapps.patient.temporaryRecord")} <br/>
+                    <br/>
+                    <% } %>
+                    <% } %>
+                </div>
 
-        <form action="/${contextPath}/coreapps/datamanagement/mergePatients.page" method="get">
-            <input type="hidden" name="app" value="coreapps.mergePatients"/>
-            <input type="hidden" name="isUnknownPatient" value="true"/>
-            <input type="hidden" name="patient1" value="${patient.patient.id}"/>
-            <input type="submit" id="merge-button"
-                   value="${ui.message("coreapps.mergePatients.mergeIntoAnotherPatientRecord.button")}"/>
-        </form>
-    </div>
+                <div class="unknown-patient" style= <%=(!patient.unknownPatient) ? "display:none" : ""%>>
+                    ${ui.message("coreapps.patient.temporaryRecord")} <br/>
 
-    <div class="close"></div>
-</div>
+                    <form action="/${contextPath}/coreapps/datamanagement/mergePatients.page" method="get">
+                        <input type="hidden" name="app" value="coreapps.mergePatients"/>
+                        <input type="hidden" name="isUnknownPatient" value="true"/>
+                        <input type="hidden" name="patient1" value="${patient.patient.id}"/>
+                        <input type="submit" id="merge-button"
+                        value="${ui.message("coreapps.mergePatients.mergeIntoAnotherPatientRecord.button")}"/>
+                    </form>
+                </div>
 
-<div id="edit-patient-identifier-dialog" class="dialog" style="display: none">
-    <div class="dialog-header">
-        <h3>${ui.message("coreapps.patientDashBoard.editPatientIdentifier.title")}</h3>
-    </div>
+                <div class="close"></div>
+            </div>
 
-    <div class="dialog-content">
-        <input type="hidden" id="hiddenPatientIdentifierId" value=""/>
-        <input type="hidden" id="hiddenIdentifierTypeId" value=""/>
-        <input type="hidden" id="hiddenInitialIdentifierValue" value=""/>
-        <ul>
-            <li class="info">
-                <span>${ui.message("coreapps.patient")}</span>
-                <h5>${ui.format(patient.patient)}</h5>
-            </li>
-            <li class="info">
-                <span id="identifierTypeNameSpan"></span>
-            </li>
-            <li class="info">
-                <input id="patientIdentifierValue" value=""/>
-            </li>
-        </ul>
+            <div id="edit-patient-identifier-dialog" class="dialog" style="display: none">
+                <div class="dialog-header">
+                    <h3>${ui.message("coreapps.patientDashBoard.editPatientIdentifier.title")}</h3>
+                </div>
 
-        <button id="confirmIdentifierId" class="confirm right">${ui.message("coreapps.confirm")}</button>
-        <button class="cancel">${ui.message("coreapps.cancel")}</button>
-    </div>
-</div>
+                <div class="dialog-content">
+                    <input type="hidden" id="hiddenPatientIdentifierId" value=""/>
+                    <input type="hidden" id="hiddenIdentifierTypeId" value=""/>
+                    <input type="hidden" id="hiddenInitialIdentifierValue" value=""/>
+                    <ul>
+                        <li class="info">
+                            <span>${ui.message("coreapps.patient")}</span>
+                            <h5>${ui.format(patient.patient)}</h5>
+                        </li>
+                        <li class="info">
+                            <span id="identifierTypeNameSpan"></span>
+                        </li>
+                        <li class="info">
+                            <input id="patientIdentifierValue" value=""/>
+                        </li>
+                    </ul>
+
+                    <button id="confirmIdentifierId" class="confirm right">${ui.message("coreapps.confirm")}</button>
+                    <button class="cancel">${ui.message("coreapps.cancel")}</button>
+                </div>
+            </div>

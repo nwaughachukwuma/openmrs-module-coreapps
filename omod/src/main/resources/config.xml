@@ -200,6 +200,7 @@
         <name>App: coreapps.dataManagement</name>
         <description>Able to access data management apps</description>
     </privilege>
+    
     <privilege>
         <name>App: coreapps.mergePatient</name>
         <description>Able to access the merge patient app</description>

@@ -1,0 +1,39 @@
+{
+    "id": "contactInfo",
+    "label": "registrationapp.patient.contactInfo.label",
+    "questions": [
+        {
+            "legend": "Person.address",
+            "fields": [
+                {
+                    "type": "personAddress",
+                    "label": "registrationapp.patient.address.question",
+                    "widget": {
+                        "providerName": "registrationapp",
+                        "fragmentId": "field/personAddressWithHierarchy",
+                        "config": {
+                          "manualFields": ["address1"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "legend": "registrationapp.patient.phone.label",
+            "id": "phoneNumberLabel",
+            "fields": [
+                {
+                    "type": "personAttribute",
+                    "label": "registrationapp.patient.phone.question",
+                    "formFieldName": "phoneNumber",
+                    "uuid": "14d4f066-15f5-102d-96e4-000c29c2a5d7",
+                    "widget": {
+                        "providerName": "uicommons",
+                        "fragmentId": "field/text"
+                    },
+                    "cssClasses": ["number"]
+                }
+            ]
+        }
+     ]
+}
