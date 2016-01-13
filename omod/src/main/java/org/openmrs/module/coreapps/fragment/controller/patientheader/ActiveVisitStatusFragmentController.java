@@ -16,7 +16,6 @@ package org.openmrs.module.coreapps.fragment.controller.patientheader;
 
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.openmrs.Location;
-import org.openmrs.Patient;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.appui.UiSessionContext;
 import org.openmrs.module.emrapi.adt.AdtService;
@@ -27,7 +26,6 @@ import org.openmrs.ui.framework.annotation.InjectBeans;
 import org.openmrs.ui.framework.annotation.SpringBean;
 import org.openmrs.ui.framework.fragment.FragmentConfiguration;
 import org.openmrs.ui.framework.fragment.FragmentModel;
-import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * 
@@ -36,8 +34,9 @@ import org.springframework.web.bind.annotation.RequestParam;
  */
 public class ActiveVisitStatusFragmentController {
 
-	public void controller(FragmentConfiguration config, @RequestParam("patientId") Patient patient,
-			@InjectBeans PatientDomainWrapper wrapper, @SpringBean("adtService") AdtService adtService,
+	public void controller(FragmentConfiguration config,
+			@InjectBeans PatientDomainWrapper wrapper,
+			@SpringBean("adtService") AdtService adtService,
 			UiSessionContext sessionContext, UiUtils uiUtils, FragmentModel model) {
 
 		model.addAttribute("activeVisitStartDatetime", null);
@@ -51,7 +50,7 @@ public class ActiveVisitStatusFragmentController {
 				// location does not support visits
 			}
 		}
-		model.addAttribute("patient", patient);
+
 		if (activeVisit != null) {
 			model.addAttribute("activeVisit", activeVisit);
 			model.addAttribute("activeVisitStartDatetime",
