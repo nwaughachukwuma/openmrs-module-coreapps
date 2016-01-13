@@ -134,11 +134,9 @@
 			<% } %>
 
         </h1>
-
         <% secondLineFragments.each { %>
 		    ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment, [patient: config.patient, activeVisit: config.activeVisit])}
 		<% } %>
-
     </div>
 
     <div class="identifiers">
