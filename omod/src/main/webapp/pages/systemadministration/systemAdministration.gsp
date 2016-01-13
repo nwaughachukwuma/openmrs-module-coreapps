@@ -13,8 +13,6 @@
     ];
 </script>
 
-${ ui.includeFragment("coreapps", "administrativenotification/notifications") }
-
 <div id="tasks">
     <% extensions.each { extension -> %>
 
