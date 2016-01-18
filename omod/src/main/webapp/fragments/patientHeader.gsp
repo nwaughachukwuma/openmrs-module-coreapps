@@ -120,6 +120,10 @@
                 </a>
             </span>
             
+            <% firstLineFragments.each { %>
+		        ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
+			<% } %>
+
             <div class="hidden" id="contactInfoContent" class="contact-info-content">
                 <div>
                     <% config.regAppSections.each { %>
@@ -128,15 +132,11 @@
                     <% } %>
                 </div>
             </div>
-
-            <% firstLineFragments.each { %>
-		        ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
-			<% } %>
-
         </h1>
         <% secondLineFragments.each { %>
 		    ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment, [patient: config.patient, activeVisit: config.activeVisit])}
 		<% } %>
+		
     </div>
 
     <div class="identifiers">
