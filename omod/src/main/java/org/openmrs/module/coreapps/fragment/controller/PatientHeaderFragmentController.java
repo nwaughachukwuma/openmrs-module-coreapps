@@ -23,7 +23,7 @@ import java.util.Map;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.time.DateFormatUtils;
+
 import org.openmrs.Location;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifierType;
@@ -33,14 +33,13 @@ import org.openmrs.api.ConceptService;
 import org.openmrs.api.LocationService;
 import org.openmrs.api.ObsService;
 import org.openmrs.api.context.Context;
-import org.openmrs.layout.web.name.NameSupport;
-import org.openmrs.layout.web.name.NameTemplate;
 import org.openmrs.module.appframework.context.AppContextModel;
 import org.openmrs.module.appframework.domain.AppDescriptor;
 import org.openmrs.module.appframework.domain.Extension;
 import org.openmrs.module.appframework.service.AppFrameworkService;
 import org.openmrs.module.appui.UiSessionContext;
 import org.openmrs.module.coreapps.CoreAppsProperties;
+import org.openmrs.module.coreapps.NameSupportCompatibility;
 import org.openmrs.module.coreapps.contextmodel.PatientContextModel;
 import org.openmrs.module.coreapps.contextmodel.VisitContextModel;
 import org.openmrs.module.coreapps.fragment.controller.patientheader.RegistrationDataHelper;
@@ -104,25 +103,24 @@ public class PatientHeaderFragmentController {
 
         if (activeVisit != null) {
             config.addAttribute("activeVisit", activeVisit);
-            config.addAttribute("activeVisitStartDatetime",
-                    DateFormatUtils.format(activeVisit.getStartDatetime(), "dd MMM yyyy hh:mm a", Context.getLocale()));
+            config.addAttribute("activeVisitStartDatetime", uiUtils.format(activeVisit.getStartDatetime()));
         }
 
-        
+        // Scan extensions
         List<Extension> firstLineFragments = appFrameworkService.getExtensionsForCurrentUser("patientHeader.firstLineFragments");
         Collections.sort(firstLineFragments);
         model.addAttribute("firstLineFragments", firstLineFragments);
+		
+        List<Extension> secondLineFragments = appFrameworkService.getExtensionsForCurrentUser("patientHeader.secondLineFragments");
+        Collections.sort(secondLineFragments);
+        model.addAttribute("secondLineFragments", secondLineFragments);
 
         // Adapting the header's content based on actual/current registration app's sections.
  		List<AppDescriptor> regAppDescriptors = getRegistrationAppConfig(appFrameworkService);
  		List<RegistrationSectionData> regAppSections = getRegistrationData(regAppDescriptors, new DataContextWrapper(sessionContext.getLocale(), wrapper, conceptService, obsService, locationService));
  		config.addAttribute("regAppSections", regAppSections);
- 		
-        List<Extension> secondLineFragments = appFrameworkService.getExtensionsForCurrentUser("patientHeader.secondLineFragments");
-        Collections.sort(secondLineFragments);
-        model.addAttribute("secondLineFragments", secondLineFragments);
-        
-		List<ExtraPatientIdentifierType> extraPatientIdentifierTypes = new ArrayList<ExtraPatientIdentifierType>();
+ 
+   		List<ExtraPatientIdentifierType> extraPatientIdentifierTypes = new ArrayList<ExtraPatientIdentifierType>();
 
 		for (PatientIdentifierType type : emrApiProperties.getExtraPatientIdentifierTypes()) {
 			List<AutoGenerationOption> options = identifierSourceService.getAutoGenerationOptions(type);
@@ -134,7 +132,7 @@ public class PatientHeaderFragmentController {
 		
 		config.addAttribute("extraPatientIdentifierTypes", extraPatientIdentifierTypes);
         config.addAttribute("extraPatientIdentifiersMappedByType", wrapper.getExtraIdentifiersMappedByType(sessionContext.getSessionLocation()));
-        config.addAttribute("defaultDashboard", coreAppsProperties.getDefaultDashboard());
+        config.addAttribute("dashboardUrl", coreAppsProperties.getDashboardUrl());
     }
 
 	/**
@@ -196,10 +194,11 @@ public class PatientHeaderFragmentController {
 
     private Map<String,String> getNames(PersonName personName) {
 
+    	NameSupportCompatibility nameSupport = Context.getRegisteredComponent("coreapps.NameSupportCompatibility", NameSupportCompatibility.class);
+    	
         Map<String, String> nameFields = new LinkedHashMap<String, String>();
-        NameTemplate nameTemplate = NameSupport.getInstance().getDefaultLayoutTemplate();
-        List<List<Map<String, String>>> lines = nameTemplate.getLines();
-        String layoutToken = nameTemplate.getLayoutToken();
+        List<List<Map<String, String>>> lines = nameSupport.getLines();
+        String layoutToken = nameSupport.getLayoutToken();
 
         // note that the assumption is one one field per "line", otherwise the labels that appear under each field may not render properly
         try {
@@ -210,7 +209,7 @@ public class PatientHeaderFragmentController {
                 for (Map<String, String> lineToken : line) {
                     if (lineToken.get("isToken").equals(layoutToken)) {
                         String tokenValue = BeanUtils.getProperty(personName, lineToken.get("codeName"));
-                        nameLabel = nameTemplate.getNameMappings().get(lineToken.get("codeName"));
+                        nameLabel = nameSupport.getNameMappings().get(lineToken.get("codeName"));
                         if (StringUtils.isNotBlank(tokenValue)) {
                             hasToken = true;
                             nameLine += tokenValue;

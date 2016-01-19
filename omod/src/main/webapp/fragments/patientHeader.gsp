@@ -1,7 +1,6 @@
 <%
     def patient = config.patient
     def patientNames = config.patientNames
-    def dateFormat = new java.text.SimpleDateFormat("dd MMM yyyy hh:mm a")
 
     ui.includeCss("coreapps", "patientHeader.css")
     ui.includeJavascript("coreapps", "patientdashboard/patient.js")
@@ -28,49 +27,35 @@
                     //ENTER key has been pressed
                     jq('#confirmIdentifierId').click();
                 }
-        }
-    });
+            }
 
-    jq(".editPatientIdentifier").click(function (event) {
+        });
 
-        var patientIdentifierId = jq(event.target).attr('data-patient-identifier-id');
-        var identifierTypeId = jq(event.target).attr("data-identifier-type-id");
-        var identifierTypeName = jq(event.target).attr("data-identifier-type-name");
-        var patientIdentifierValue = jq(event.target).attr("data-patient-identifier-value");
+        jq(".editPatientIdentifier").click(function (event) {
 
-        jq("#hiddenIdentifierTypeId").val(identifierTypeId);
-        jq("#hiddenInitialIdentifierValue").val(patientIdentifierValue);
-        jq("#hiddenPatientIdentifierId").val(patientIdentifierId);
-        jq("#identifierTypeNameSpan").text(identifierTypeName);
-        jq("#patientIdentifierValue").val(patientIdentifierValue);
+            var patientIdentifierId = jq(event.target).attr('data-patient-identifier-id');
+            var identifierTypeId = jq(event.target).attr("data-identifier-type-id");
+            var identifierTypeName = jq(event.target).attr("data-identifier-type-name");
+            var patientIdentifierValue = jq(event.target).attr("data-patient-identifier-value");
 
-        showEditPatientIdentifierDialog();
+            jq("#hiddenIdentifierTypeId").val(identifierTypeId);
+            jq("#hiddenInitialIdentifierValue").val(patientIdentifierValue);
+            jq("#hiddenPatientIdentifierId").val(patientIdentifierId);
+            jq("#identifierTypeNameSpan").text(identifierTypeName);
+            jq("#patientIdentifierValue").val(patientIdentifierValue);
 
-        jq('.confirm').attr("disabled", "disabled");
-        jq('.confirm').addClass("disabled");
+            showEditPatientIdentifierDialog();
 
-    });
+            jq('.confirm').attr("disabled", "disabled");
+            jq('.confirm').addClass("disabled");
 
-    // generally clicking on the header should return to the clinician-facing dashboard, but we added this
-    // global property to allow the link to go to the "Visits" dashboard for legacy implementations
-    <% if (!config.defaultDashboard || config.defaultDashboard.toUpperCase() != 'VISITS') { %>
+        });
+
         jq(".demographics .name").click(function () {
             emr.navigateTo({
-                provider: 'coreapps',
-                page: 'clinicianfacing/patient',
-                query: { patientId: ${patient.patient.id} }
+                url: "${ ui.urlBind("/" + contextPath + config.dashboardUrl, [ patientId: patient.patient.id ] ) }"
             });
         })
-        <% } else { %>
-            jq(".demographics .name").click(function () {
-                emr.navigateTo({
-                    provider: 'coreapps',
-                    page: 'patientdashboard/patientDashboard',
-                    query: { patientId: ${patient.patient.id} }
-                });
-            })
-            <% } %>
-
             jq("#patient-header-contactInfo").click(function (){
                 var contactInfoDialogDiv = jq("#contactInfoContent");
 
@@ -122,7 +107,7 @@
                     ${ui.message("coreapps.unknownAge")}
                     <% } %>
                 </span>
-                <span class="edit-info">
+                <span id="edit-patient-demographics" class="edit-info">
                     <small>
                         <%= ui.includeFragment("appui", "extensionPoint", [ id: "patientHeader.editPatientDemographics", contextModel: appContextModel ]) %>
                     </small>
@@ -134,11 +119,11 @@
                     <i class="toggle-icon icon-caret-up small"></i>
                 </a>
             </span>
-
-            <% firstLineFragments.each { %>
-                ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
-            <% } %>
             
+            <% firstLineFragments.each { %>
+		        ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment)}
+			<% } %>
+
             <div class="hidden" id="contactInfoContent" class="contact-info-content">
                 <div>
                     <% config.regAppSections.each { %>
@@ -149,9 +134,9 @@
             </div>
         </h1>
         <% secondLineFragments.each { %>
-            ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment, [patient: config.patient, activeVisit: config.activeVisit])}
-        <% } %>
-
+		    ${ ui.includeFragment(it.extensionParams.provider, it.extensionParams.fragment, [patient: config.patient, activeVisit: config.activeVisit])}
+		<% } %>
+		
     </div>
 
     <div class="identifiers">
