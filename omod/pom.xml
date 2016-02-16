@@ -368,7 +368,6 @@
                 <extensions>true</extensions>
                 <executions>
                     <execution>
-                    	<phase>none</phase>
                         <goals>
                             <goal>test</goal>
                         </goals>
