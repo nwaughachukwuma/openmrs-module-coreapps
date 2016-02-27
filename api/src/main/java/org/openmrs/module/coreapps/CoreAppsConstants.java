@@ -31,4 +31,6 @@ public class CoreAppsConstants {
 
     @Deprecated  // no longer used, to override set coreapps.dashboardUrl instead
     public static final String GP_DEFAULT_DASHBOARD = "coreapps.defaultDashboard";
+
+    public static final String GP_ENCOUNTERS_PER_PAGE = "coreapps.encountersPerPage";
 }

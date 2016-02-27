@@ -70,4 +70,17 @@ public class CoreAppsProperties extends ModuleProperties {
         }
     }
 
+    public int getEncountersPerPage() {
+        String counter = getGlobalProperty(CoreAppsConstants.GP_ENCOUNTERS_PER_PAGE, false);
+        if (StringUtils.hasText(counter)) {
+            try {
+                return Integer.parseInt(counter);
+            } catch (NumberFormatException e) {
+                throw new IllegalStateException("Invalid configuration: number of encounters expected in " + CoreAppsConstants.GP_ENCOUNTERS_PER_PAGE, e);
+            }
+        } else {
+            return 100;
+        }
+    }
+
 }
