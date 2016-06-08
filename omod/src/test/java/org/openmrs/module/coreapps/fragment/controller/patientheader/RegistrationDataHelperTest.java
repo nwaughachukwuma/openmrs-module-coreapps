@@ -2,6 +2,8 @@ package org.openmrs.module.coreapps.fragment.controller.patientheader;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
@@ -100,7 +102,7 @@ public class RegistrationDataHelperTest {
 
 		Concept concept = dataContext.getConceptFromFormFieldName(fieldName);
 		
-		assertFalse(concept == null);
+		assertNotNull(concept);
 	}
 	
 	@Test
@@ -112,7 +114,7 @@ public class RegistrationDataHelperTest {
 		Concept concept = dataContext.getConceptFromFormFieldName(fieldName);
 		
 		verify(log, times(1)).warn(anyString());
-		assertTrue(concept == null);
+		assertNull(concept);
 	}
 
 	@Test
@@ -124,7 +126,7 @@ public class RegistrationDataHelperTest {
 		Concept concept = dataContext.getConceptFromFormFieldName(fieldName);
 		
 		verify(log, times(1)).warn(anyString());
-		assertTrue(concept == null);
+		assertNull(concept);
 	}
 	
 	@Test
@@ -292,4 +294,28 @@ public class RegistrationDataHelperTest {
 		assertEquals(field.getData().size(), 1);
 		assertEquals(field.getData().get(0).getValue(), answer);
 	}
+	
+	@Test
+   public void should_logErrorWhenCodedObsNull() {
+
+	   RegistrationFieldData field = new RegistrationFieldData();
+
+      DataContextWrapper context = mock(DataContextWrapper.class);
+      Concept conceptQuestion = mock(Concept.class);
+      when(context.getConceptFromFormFieldName(anyString())).thenReturn(conceptQuestion);
+      when(context.getPatientWrapper()).thenReturn(patientWrapper);
+      when(context.getObsService()).thenReturn(obsService);
+      ConceptDatatype dataType = mock(ConceptDatatype.class);
+      when(dataType.getName()).thenReturn(RegistrationFieldData.CONCEPT_CODED);
+      when(conceptQuestion.getDatatype()).thenReturn(dataType);
+      when(conceptQuestion.getName(any(Locale.class))).thenReturn(mock(ConceptName.class));
+
+      field.setLog(log);
+      when(obsService.getObservationsByPersonAndConcept(any(Patient.class), eq(conceptQuestion))).thenReturn(new ArrayList<Obs>() {{ add(null); }} );
+      
+      boolean success = field.fetchObsData(context);
+      
+      assertFalse(success);
+      verify(log, times(1)).error(anyString());
+   }
 }

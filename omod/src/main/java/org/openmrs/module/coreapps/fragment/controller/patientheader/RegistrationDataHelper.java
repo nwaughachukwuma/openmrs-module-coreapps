@@ -164,6 +164,10 @@ public class RegistrationDataHelper {
 		
 		protected Log log = LogFactory.getLog(getClass());
 		
+		protected void setLog(Log log) {
+	      this.log = log;
+	   }
+		
 		protected static String ADDR_TMPL_NAMEMAPPINGS = "nameMappings";
 		
 		protected static String CONCEPT_CODED = "Coded";
@@ -333,8 +337,14 @@ public class RegistrationDataHelper {
 				String answer = "";
 				if (CollectionUtils.isEmpty(obsList) == false) {
 					Obs obs = obsList.get(0);
-					Concept conceptAnswer = obs.getValueCoded();
-					answer = conceptAnswer.getName(dataContext.getLocale()).toString();
+					if (obs != null) {
+					   Concept conceptAnswer = obs.getValueCoded();
+	               answer = conceptAnswer.getName(dataContext.getLocale()).toString();
+					}
+					else {
+					   log.error("The concept coded answer could not be fetched for field labelled: " + getLabel() + ", the fetched obs exists but is 'null'. This was the \"obs\"'s \"formFieldName\" provided: " + formFieldName);
+	               return false;
+					}
 				}
 				
 				data.add(new Data(question, answer));
